@@ -1,0 +1,190 @@
+{
+  "comment": "Polígonos en píxeles de la imagen original (2996 x 4226). Cada elemento vive en un plano: 'horizontal' (y = cte), 'side' (pared paralela a la calle, x = cte) o 'frontal' (paralelo al cuadro, z = cte). El plano se fija con un 'anchor': un píxel que se proyecta sobre otro elemento ya construido ('ground' es el piso y = 0). 'offset' suma metros de profundidad (frontal) o de altura (horizontal).",
+  "elements": [
+    {
+      "id": "fondo_cielo",
+      "label": "Cielo y ciudad lejana",
+      "kind": "backdrop",
+      "plane": { "type": "frontal", "depth": 70 },
+      "polygon": [[150, -600], [1010, -600], [1010, 1560], [150, 1560]]
+    },
+    {
+      "id": "piso_calle",
+      "label": "Piso de la calle",
+      "kind": "architecture",
+      "plane": { "type": "horizontal", "y": 0 },
+      "polygon": [[0, 3890], [1570, 3890], [1050, 2580], [343, 2580], [343, 2700], [110, 3330], [0, 3330]]
+    },
+    {
+      "id": "pilar_izquierdo",
+      "label": "Pilar de ladrillo (primer plano)",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [60, 3330] } },
+      "polygon": [[0, 2440], [110, 2440], [110, 3330], [0, 3330]]
+    },
+    {
+      "id": "pared_izquierda",
+      "label": "Fachadas de la izquierda",
+      "kind": "architecture",
+      "plane": { "type": "side", "anchor": { "on": "ground", "px": [343, 2700] } },
+      "polygon": [[0, -300], [165, -300], [165, 1140], [343, 1290], [343, 2700], [110, 2440], [0, 2440]]
+    },
+    {
+      "id": "pared_derecha",
+      "label": "Muro lateral de la casa de María",
+      "kind": "architecture",
+      "plane": { "type": "side", "anchor": { "on": "ground", "px": [1200, 3203] } },
+      "polygon": [[1570, 3890], [940, 2580], [940, -300], [1350, -300], [1390, 700], [1450, 1100], [1490, 1560], [1560, 2040], [1570, 2050]]
+    },
+    {
+      "id": "escalones",
+      "label": "Escalones",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [600, 2580] } },
+      "polygon": [[343, 2580], [1050, 2580], [1050, 2460], [343, 2460]]
+    },
+    {
+      "id": "plataforma",
+      "label": "Plataforma bajo el arco",
+      "kind": "architecture",
+      "plane": { "type": "horizontal", "anchor": { "on": "escalones", "px": [600, 2460] } },
+      "polygon": [[343, 2460], [1050, 2460], [1050, 2425], [343, 2425]]
+    },
+    {
+      "id": "arco_fondo",
+      "label": "Puente y arco del fondo",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "plataforma", "px": [450, 2425] } },
+      "polygon": [[343, 1294], [1051, 1294], [1051, 2425], [343, 2425]],
+      "holes": [[[560, 2425], [560, 1900], [610, 1720], [700, 1600], [760, 1570], [830, 1590], [910, 1680], [960, 1850], [960, 2425]]]
+    },
+    {
+      "id": "patio_fondo",
+      "label": "Patio detrás del arco",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "plataforma", "px": [663, 2369] } },
+      "polygon": [[540, 1540], [1000, 1540], [1000, 2440], [540, 2440]]
+    },
+    {
+      "id": "fachada_maria",
+      "label": "Fachada de la casa de María",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [1700, 3890] } },
+      "polygon": [[1570, 3890], [2996, 3890], [2996, 685], [2805, 685], [2805, -300], [2700, -300], [2700, 685], [2205, 685], [2205, -300], [2100, -300], [2100, 685], [1500, 685], [1500, -300], [1350, -300], [1390, 700], [1450, 1100], [1490, 1560], [1560, 2040], [1570, 2050]],
+      "holes": [[[1845, 3860], [2577, 3860], [2577, 1740], [1845, 1740]]]
+    },
+    {
+      "id": "alfeizar",
+      "label": "Alféizar con la inscripción",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [1000, 3890] } },
+      "polygon": [[0, 3890], [2996, 3890], [2996, 4226], [0, 4226]]
+    },
+    {
+      "id": "logia_fondo",
+      "label": "Fondo de la logia",
+      "kind": "architecture",
+      "comment": "Supuesto: la pared del fondo de la logia está 1,5 m detrás de la fachada.",
+      "plane": { "type": "frontal", "from": "fachada_maria", "offset": 1.5 },
+      "polygon": [[1500, 300], [2996, 300], [2996, 685], [1500, 685]]
+    },
+    {
+      "id": "logia_casetones",
+      "label": "Techo de casetones de la logia",
+      "kind": "architecture",
+      "plane": { "type": "horizontal", "anchor": { "on": "logia_fondo", "px": [2300, 300] } },
+      "polygon": [[1500, -700], [2996, -700], [2996, 300], [1500, 300]]
+    },
+    {
+      "id": "cuarto_techo",
+      "label": "Techo de vigas del cuarto de María",
+      "kind": "architecture",
+      "plane": { "type": "horizontal", "anchor": { "on": "fachada_maria", "px": [2200, 1740] } },
+      "polygon": [[1845, 1740], [2577, 1740], [2577, 1965], [1845, 1965]]
+    },
+    {
+      "id": "cuarto_fondo",
+      "label": "Pared del fondo del cuarto",
+      "kind": "architecture",
+      "plane": { "type": "frontal", "anchor": { "on": "cuarto_techo", "px": [2200, 1965] } },
+      "polygon": [[1845, 1965], [2577, 1965], [2577, 3300], [1845, 3300]]
+    },
+    {
+      "id": "cuarto_piso",
+      "label": "Piso del cuarto",
+      "kind": "architecture",
+      "plane": { "type": "horizontal", "y": 0 },
+      "polygon": [[1845, 3200], [2577, 3200], [2577, 3860], [1845, 3860]]
+    },
+    {
+      "id": "fraile",
+      "label": "Fraile del fondo",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [420, 2655] } },
+      "polygon": [[395, 2268], [420, 2255], [455, 2262], [465, 2300], [450, 2330], [480, 2360], [490, 2440], [480, 2550], [495, 2650], [455, 2662], [400, 2660], [350, 2655], [370, 2550], [375, 2420], [385, 2340], [400, 2310]]
+    },
+    {
+      "id": "hombre_dorado",
+      "label": "Hombre de manto dorado",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "plataforma", "px": [910, 2455] } },
+      "polygon": [[905, 2115], [935, 2140], [985, 2150], [975, 2230], [950, 2260], [960, 2420], [975, 2460], [900, 2468], [860, 2460], [870, 2380], [850, 2300], [820, 2240], [850, 2200], [880, 2180], [890, 2140]]
+    },
+    {
+      "id": "puente_figuras",
+      "label": "Figuras sobre el puente",
+      "kind": "figure",
+      "plane": { "type": "frontal", "from": "arco_fondo", "offset": -0.4 },
+      "polygon": [[585, 1300], [585, 1175], [615, 1150], [660, 1160], [690, 1200], [730, 1195], [770, 1205], [795, 1245], [800, 1300]]
+    },
+    {
+      "id": "puente_planta",
+      "label": "Maceta sobre el puente",
+      "kind": "figure",
+      "plane": { "type": "frontal", "from": "arco_fondo", "offset": -0.4 },
+      "polygon": [[922, 1300], [925, 1225], [950, 1140], [990, 1150], [1000, 1230], [995, 1300]]
+    },
+    {
+      "id": "balcon_figuras",
+      "label": "Frailes y hombre de rojo en el balcón",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "pared_izquierda", "px": [160, 1740] } },
+      "polygon": [[34, 1271], [80, 1265], [130, 1300], [175, 1262], [240, 1270], [262, 1310], [262, 1560], [160, 1569], [150, 1745], [34, 1745]]
+    },
+    {
+      "id": "nino",
+      "label": "Niño asomado",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "pared_izquierda", "px": [160, 2129] } },
+      "polygon": [[100, 1775], [170, 1770], [195, 1830], [194, 2000], [175, 2129], [95, 2129], [90, 1950]]
+    },
+    {
+      "id": "emigdio",
+      "label": "San Emigdio con la maqueta de Ascoli",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [1050, 3470] } },
+      "polygon": [[870, 2640], [960, 2560], [1075, 2545], [1060, 2620], [1010, 2650], [1030, 2720], [1080, 2790], [1150, 2900], [1170, 2980], [1270, 3020], [1285, 3060], [1180, 3110], [1180, 3250], [1170, 3380], [1120, 3420], [1110, 3470], [1050, 3480], [950, 3460], [1010, 3420], [1045, 3300], [1020, 3200], [960, 3150], [860, 3110], [790, 2920], [780, 2790], [860, 2700]]
+    },
+    {
+      "id": "gabriel",
+      "label": "Arcángel Gabriel",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [560, 3600] } },
+      "polygon": [[530, 2600], [600, 2535], [680, 2522], [760, 2600], [748, 2700], [725, 2760], [780, 2790], [790, 2900], [770, 3050], [800, 3130], [960, 3150], [1020, 3200], [1045, 3300], [1010, 3420], [960, 3460], [990, 3520], [1040, 3590], [1000, 3620], [820, 3610], [700, 3650], [640, 3700], [560, 3650], [400, 3640], [250, 3580], [90, 3500], [150, 3410], [230, 3370], [300, 3330], [300, 3250], [230, 3240], [195, 3220], [200, 3150], [260, 3050], [330, 3020], [290, 2930], [240, 2900], [180, 2880], [110, 2820], [60, 2760], [80, 2700], [60, 2640], [95, 2560], [150, 2590], [210, 2620], [280, 2650], [350, 2680], [430, 2720], [480, 2740], [510, 2680]]
+    },
+    {
+      "id": "atril",
+      "label": "Atril de María",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [1950, 3780] } },
+      "polygon": [[1845, 2889], [1902, 2873], [1982, 2954], [2095, 3082], [2095, 3773], [1845, 3773]]
+    },
+    {
+      "id": "maria",
+      "label": "La Virgen",
+      "kind": "figure",
+      "plane": { "type": "frontal", "anchor": { "on": "ground", "px": [2300, 3770] } },
+      "polygon": [[2054, 2632], [2143, 2576], [2231, 2624], [2255, 2761], [2368, 2809], [2464, 2986], [2529, 3146], [2561, 3307], [2545, 3548], [2561, 3757], [2400, 3773], [2175, 3773], [2079, 3741], [2095, 3628], [2062, 3387], [2046, 3211], [2030, 3082], [2046, 2954], [2070, 2825], [2046, 2728]]
+    }
+  ]
+}

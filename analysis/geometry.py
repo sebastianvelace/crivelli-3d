@@ -1,0 +1,358 @@
+"""
+Análisis geométrico de la Anunciación con san Emigdio (Carlo Crivelli, 1486, NG739).
+
+Lee las líneas marcadas a mano (analysis/data/lines.json, generadas con
+analysis/marcador.html) y calcula:
+
+  1. El punto de fuga central por mínimos cuadrados (coordenadas homogéneas + SVD)
+     y su residuo ("error de perspectiva").
+  2. La línea del horizonte.
+  3. La distancia del ojo (distancia focal f en píxeles) a partir de los puntos de
+     distancia: las diagonales de baldosas cuadradas fugan a (x_pf ± f, y_h).
+  4. La altura del ojo a partir de figuras de altura supuesta.
+  5. La homografía del piso de la calle (analítica y por DLT con las baldosas)
+     y la planta rectificada vista desde arriba.
+
+Salidas:
+  public/data/calibration.json   -> la usa la escena three.js
+  docs/01_lineas_de_fuga.jpg     -> pintura con las líneas de fuga
+  docs/02_planta_rectificada.png -> planta del piso vista desde arriba
+  analysis/out/reporte.md        -> resumen numérico
+
+Uso:  python analysis/geometry.py      (requiere numpy y Pillow)
+"""
+
+import json
+import math
+from pathlib import Path
+
+import numpy as np
+from PIL import Image, ImageDraw, ImageFont
+
+ROOT = Path(__file__).resolve().parent.parent
+LINES = ROOT / "analysis" / "data" / "lines.json"
+
+# Dimensiones físicas según la ficha de Wikimedia Commons de la reproducción
+# usada (207 x 146,5 cm). Solo se usan para traducir f (px) a una distancia real en cm.
+PANEL_WIDTH_CM = 146.5
+
+
+# ---------------------------------------------------------------------------
+# Geometría proyectiva básica
+# ---------------------------------------------------------------------------
+
+def homogeneous_line(seg):
+    """Recta por dos puntos: l = p1 x p2 (producto cruz en coordenadas homogéneas).
+    Se normaliza para que (a, b) sea unitario; así l·p es la distancia en píxeles."""
+    p1 = np.array([seg[0], seg[1], 1.0])
+    p2 = np.array([seg[2], seg[3], 1.0])
+    l = np.cross(p1, p2)
+    return l / math.hypot(l[0], l[1])
+
+
+def intersect(l1, l2):
+    """Intersección de dos rectas: p = l1 x l2 (también un producto cruz)."""
+    p = np.cross(l1, l2)
+    return p / p[2]
+
+
+def vanishing_point(segments):
+    """Punto de fuga de N rectas por mínimos cuadrados.
+
+    Cada recta l_i cumple l_i · v = 0 si pasa por v. Con N > 2 rectas ruidosas,
+    buscamos el v (con |v| = 1) que minimiza sum (l_i · v)^2, es decir, el vector
+    singular de menor valor singular de la matriz A (N x 3) con filas l_i.
+
+    Para que el problema esté bien condicionado se normalizan las coordenadas
+    (Hartley): se trasladan al centro de la imagen y se escalan a ~1.
+    """
+    pts = np.array(segments, dtype=float).reshape(-1, 2)
+    c = pts.mean(axis=0)
+    s = math.sqrt(2) / np.mean(np.linalg.norm(pts - c, axis=1))
+    T = np.array([[s, 0, -s * c[0]], [0, s, -s * c[1]], [0, 0, 1]])
+
+    A = []
+    for seg in segments:
+        p1 = T @ np.array([seg[0], seg[1], 1.0])
+        p2 = T @ np.array([seg[2], seg[3], 1.0])
+        l = np.cross(p1, p2)
+        A.append(l / math.hypot(l[0], l[1]))
+    A = np.array(A)
+    _, _, Vt = np.linalg.svd(A)
+    v = np.linalg.inv(T) @ Vt[-1]
+    v = v / v[2]
+
+    # Residuo: distancia perpendicular (px) del punto de fuga a cada recta,
+    # y ángulo entre cada segmento y la dirección hacia el punto de fuga.
+    dists, angles = [], []
+    for seg in segments:
+        l = homogeneous_line(seg)
+        dists.append(abs(l @ v))
+        mid = np.array([(seg[0] + seg[2]) / 2, (seg[1] + seg[3]) / 2])
+        d_seg = np.array([seg[2] - seg[0], seg[3] - seg[1]])
+        d_vp = v[:2] - mid
+        cosang = abs(d_seg @ d_vp) / (np.linalg.norm(d_seg) * np.linalg.norm(d_vp))
+        angles.append(math.degrees(math.acos(min(1.0, cosang))))
+    return v[:2], np.array(dists), np.array(angles)
+
+
+def dlt_homography(src, dst):
+    """Homografía H (3x3) con dst ~ H src por DLT normalizado (4 o más puntos)."""
+    def normalizer(p):
+        c = p.mean(axis=0)
+        s = math.sqrt(2) / np.mean(np.linalg.norm(p - c, axis=1))
+        return np.array([[s, 0, -s * c[0]], [0, s, -s * c[1]], [0, 0, 1]])
+
+    src, dst = np.asarray(src, float), np.asarray(dst, float)
+    Ts, Td = normalizer(src), normalizer(dst)
+    rows = []
+    for (x, y), (u, v) in zip(src, dst):
+        x, y, _ = Ts @ [x, y, 1]
+        u, v, _ = Td @ [u, v, 1]
+        rows.append([-x, -y, -1, 0, 0, 0, u * x, u * y, u])
+        rows.append([0, 0, 0, -x, -y, -1, v * x, v * y, v])
+    _, _, Vt = np.linalg.svd(np.array(rows))
+    Hn = Vt[-1].reshape(3, 3)
+    H = np.linalg.inv(Td) @ Hn @ Ts
+    return H / H[2, 2]
+
+
+def apply_h(H, pts):
+    pts = np.asarray(pts, float)
+    ph = np.c_[pts, np.ones(len(pts))] @ H.T
+    return ph[:, :2] / ph[:, 2:3]
+
+
+# ---------------------------------------------------------------------------
+# Programa principal
+# ---------------------------------------------------------------------------
+
+def main():
+    data = json.loads(LINES.read_text(encoding="utf-8"))
+    W, Himg = data["image"]["width"], data["image"]["height"]
+    img_path = ROOT / data["image"]["file"]
+
+    # 1) Punto de fuga central ------------------------------------------------
+    vp, dists, angles = vanishing_point(data["orthogonals"])
+    cx, cy = vp
+    rms = float(np.sqrt(np.mean(dists ** 2)))
+
+    # 2) Horizonte -------------------------------------------------------------
+    # Con el cuadro vertical (costruzione legittima), el horizonte es la recta
+    # horizontal y = cy que pasa por el punto de fuga central. El punto de fuga
+    # es también el "punto céntrico" de Alberti: el pie de la perpendicular del
+    # ojo al cuadro, es decir, el punto principal de la cámara.
+    horizon = np.array([0.0, 1.0, -cy])
+
+    # 3) Distancia del ojo -----------------------------------------------------
+    # Supuesto: las baldosas del piso son CUADRADAS. Sus diagonales forman 45°
+    # con el plano del cuadro, así que fugan a los "puntos de distancia"
+    # (cx ± f, cy). La distancia horizontal entre el punto de fuga central y un
+    # punto de distancia es exactamente la distancia del ojo al cuadro, f (en px).
+    dps, fs = [], []
+    for seg in data["diagonals"]:
+        p = intersect(homogeneous_line(seg), horizon)
+        dps.append(p[:2].tolist())
+        fs.append(abs(p[0] - cx))
+    fs = np.array(fs)
+    f = float(np.mean(fs))
+
+    # 4) Altura del ojo ----------------------------------------------------------
+    # Una figura vertical de altura h, apoyada en el piso a profundidad D:
+    #   v_pie - cy = f * Hc / D   y   v_pie - v_cabeza = f * h / D
+    # dividiendo:  Hc = h * (v_pie - cy) / (v_pie - v_cabeza)
+    # (no depende de D ni de f). Las alturas h son supuestos explícitos.
+    eye = []
+    for fig in data["figures"]:
+        vf, vh = fig["foot"][1], fig["head"][1]
+        eye.append(fig["height_m"] * (vf - cy) / (vf - vh))
+    Hc = float(np.mean(eye))
+
+    # 5) Homografía del piso -----------------------------------------------------
+    # Cámara: ojo en (0, Hc, 0) mirando hacia -Z. Un punto del piso (X, 0, -D)
+    # se proyecta en u = cx + f X / D,  v = cy + f Hc / D. En coordenadas
+    # homogéneas eso es una homografía del plano (X, D) a la imagen:
+    #        [u]   [f  cx    0  ] [X]
+    #      w [v] = [0  cy  f*Hc ] [D]
+    #        [1]   [0   1    0  ] [1]
+    H_analytic = np.array([[f, cx, 0.0], [0.0, cy, f * Hc], [0.0, 1.0, 0.0]])
+
+    # Comprobación independiente: DLT con las esquinas de baldosas medidas,
+    # en unidades de baldosa. Tamaño de la baldosa en metros, a partir de la
+    # hilera frontal: s = Hc * ancho_px / (v - cy).
+    corners = np.array(data["tiles"]["corners"], float)
+    H_dlt = dlt_homography(corners[:, :2], corners[:, 2:])
+    row0 = corners[corners[:, 1] == 0]
+    tile_px = np.mean(np.diff(np.sort(row0[:, 2])))
+    tile_m = Hc * tile_px / (row0[0, 3] - cy)
+    reproj = apply_h(H_dlt, corners[:, :2]) - corners[:, 2:]
+    reproj_rms = float(np.sqrt(np.mean(np.sum(reproj ** 2, axis=1))))
+    # Profundidad (D) del borde frontal de las baldosas y posición X de la junta 0
+    D0 = f * Hc / (row0[0, 3] - cy)
+    X0 = (row0[0, 2] - cx) * D0 / f
+    # Diferencia entre ambas homografías en las esquinas medidas
+    world = np.c_[X0 + corners[:, 0] * tile_m, D0 + corners[:, 1] * tile_m]
+    diff = apply_h(H_analytic, world) - apply_h(H_dlt, corners[:, :2])
+    h_diff = float(np.sqrt(np.mean(np.sum(diff ** 2, axis=1))))
+
+    px_cm = PANEL_WIDTH_CM / W
+    calib = {
+        "imageWidth": W,
+        "imageHeight": Himg,
+        "vanishingPoint": [round(cx, 2), round(cy, 2)],
+        "horizonY": round(cy, 2),
+        "focalPx": round(f, 2),
+        "focalPxSamples": [round(float(x), 1) for x in fs],
+        "distancePoints": [[round(a, 1), round(b, 1)] for a, b in dps],
+        "eyeHeightM": round(Hc, 3),
+        "eyeHeightSamples": [round(float(x), 3) for x in eye],
+        "perspectiveErrorRmsPx": round(rms, 2),
+        "perspectiveErrorMaxPx": round(float(dists.max()), 2),
+        "perspectiveErrorMeanDeg": round(float(angles.mean()), 3),
+        "linesUsed": len(data["orthogonals"]),
+        "tileSizeM": round(tile_m, 3),
+        "floorFrontDepthM": round(D0, 3),
+        "homographyFloor": H_analytic.round(4).tolist(),
+        "homographyDltReprojRmsPx": round(reproj_rms, 2),
+        "homographyAgreementRmsPx": round(h_diff, 2),
+        "fovVerticalDeg": round(math.degrees(math.atan(cy / f) + math.atan((Himg - cy) / f)), 2),
+        "fovHorizontalDeg": round(math.degrees(math.atan(cx / f) + math.atan((W - cx) / f)), 2),
+        "viewingDistanceCm": round(f * px_cm, 1),
+        "panelWidthCm": PANEL_WIDTH_CM,
+    }
+    out = ROOT / "public" / "data" / "calibration.json"
+    out.write_text(json.dumps(calib, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    draw_lines_figure(img_path, data, calib)
+    rectify_floor(img_path, H_analytic, calib, W, Himg, X0)
+    write_report(calib)
+    print(json.dumps(calib, indent=2, ensure_ascii=False))
+
+
+# ---------------------------------------------------------------------------
+# Figuras para la presentación
+# ---------------------------------------------------------------------------
+
+def font(size):
+    for name in ("DejaVuSans-Bold.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"):
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            pass
+    return ImageFont.load_default()
+
+
+def draw_lines_figure(img_path, data, calib):
+    """Pintura con: segmentos marcados (verde), su prolongación hasta el punto de
+    fuga (rojo), diagonales de baldosas hacia el punto de distancia (azul) y la
+    línea del horizonte (amarillo)."""
+    im = Image.open(img_path).convert("RGB")
+    W, H = im.size
+    pad = 0
+    dr = ImageDraw.Draw(im, "RGBA")
+    cx, cy = calib["vanishingPoint"]
+    dr.line([0, cy, W, cy], fill=(255, 220, 0, 230), width=6)
+    for s in data["orthogonals"]:
+        far = s[:2] if math.dist(s[:2], (cx, cy)) > math.dist(s[2:], (cx, cy)) else s[2:]
+        dr.line([far[0], far[1], cx, cy], fill=(230, 30, 30, 170), width=4)
+        dr.line(s, fill=(20, 230, 60, 255), width=10)
+    for s, dp in zip(data["diagonals"], calib["distancePoints"]):
+        dr.line([s[0], s[1], dp[0], dp[1]], fill=(40, 120, 255, 220), width=5)
+        dr.line(s, fill=(40, 120, 255, 255), width=10)
+    r = 34
+    dr.ellipse([cx - r, cy - r, cx + r, cy + r], outline=(255, 255, 0), width=10)
+    f = font(70)
+    dr.text((cx + 50, cy - 110), "punto de fuga", fill=(255, 255, 0), font=f,
+            stroke_width=4, stroke_fill=(0, 0, 0))
+    dr.text((40, cy + 20), "horizonte", fill=(255, 220, 0), font=f, stroke_width=4, stroke_fill=(0, 0, 0))
+    txt = (f"f = {calib['focalPx']:.0f} px  ·  error RMS = {calib['perspectiveErrorRmsPx']:.1f} px "
+           f"({calib['linesUsed']} rectas)")
+    dr.text((40, H - 120), txt, fill=(255, 255, 255), font=font(64), stroke_width=4, stroke_fill=(0, 0, 0))
+    im.thumbnail((1600, 2400))
+    im.save(ROOT / "docs" / "01_lineas_de_fuga.jpg", quality=88)
+    del pad
+
+
+def rectify_floor(img_path, H_floor, calib, W, Himg, tile_x0):
+    """Planta del piso de la calle vista desde arriba (homografía inversa).
+
+    Para cada píxel de la planta (X, D) en metros se calcula su posición (u, v)
+    en la pintura con H y se toma el color por interpolación bilineal. Solo se
+    rellena lo que está por debajo del horizonte y dentro del cuadro."""
+    src = np.asarray(Image.open(img_path).convert("RGB"), dtype=np.float32)
+    ppm = 120  # píxeles por metro en la planta
+    x_min, x_max = -1.9, 1.1
+    d_min, d_max = 1.9, 9.8
+    w_out = int((x_max - x_min) * ppm)
+    h_out = int((d_max - d_min) * ppm)
+    xs = x_min + (np.arange(w_out) + 0.5) / ppm
+    ds = d_max - (np.arange(h_out) + 0.5) / ppm  # lejos arriba, cerca abajo
+    X, D = np.meshgrid(xs, ds)
+    pts = np.stack([X.ravel(), D.ravel(), np.ones(X.size)], axis=1) @ H_floor.T
+    u = pts[:, 0] / pts[:, 2]
+    v = pts[:, 1] / pts[:, 2]
+    valid = (u >= 0) & (u < W - 1) & (v >= 0) & (v < Himg - 1)
+    u0 = np.clip(np.floor(u).astype(int), 0, W - 2)
+    v0 = np.clip(np.floor(v).astype(int), 0, Himg - 2)
+    du, dv = (u - u0)[:, None], (v - v0)[:, None]
+    col = (src[v0, u0] * (1 - du) * (1 - dv) + src[v0, u0 + 1] * du * (1 - dv)
+           + src[v0 + 1, u0] * (1 - du) * dv + src[v0 + 1, u0 + 1] * du * dv)
+    col[~valid] = (30, 30, 34)
+    out = Image.fromarray(col.reshape(h_out, w_out, 3).clip(0, 255).astype(np.uint8))
+
+    # Cuadrícula de 1 m y rótulos
+    margin = 70
+    canvas = Image.new("RGB", (max(w_out + 2 * margin, 640), h_out + 2 * margin), (245, 240, 230))
+    canvas.paste(out, (margin, margin))
+    dr = ImageDraw.Draw(canvas, "RGBA")
+    f = font(18)
+    for xm in range(math.ceil(x_min), math.floor(x_max) + 1):
+        px = margin + (xm - x_min) * ppm
+        dr.line([px, margin, px, margin + h_out], fill=(0, 200, 255, 140), width=1)
+        dr.text((px - 8, margin + h_out + 8), f"{xm}", fill=(20, 20, 20), font=f)
+    for dm in range(math.ceil(d_min), math.floor(d_max) + 1):
+        py = margin + (d_max - dm) * ppm
+        dr.line([margin, py, margin + w_out, py], fill=(0, 200, 255, 140), width=1)
+        dr.text((8, py - 10), f"{dm} m", fill=(20, 20, 20), font=f)
+    # Juntas de baldosas reconstruidas (si el supuesto de baldosas cuadradas es
+    # correcto, esta cuadrícula roja debe calzar con las juntas de la pintura).
+    s, D0 = calib["tileSizeM"], calib["floorFrontDepthM"]
+    for k in range(-8, 12):
+        xm = tile_x0 + k * s
+        if x_min <= xm <= x_max:
+            px = margin + (xm - x_min) * ppm
+            dr.line([px, margin + (d_max - D0) * ppm, px, margin + (d_max - D0 - 4 * s) * ppm],
+                    fill=(255, 40, 40, 200), width=2)
+    for k in range(0, 5):
+        py = margin + (d_max - (D0 + k * s)) * ppm
+        dr.line([margin, py, margin + w_out, py], fill=(255, 40, 40, 200), width=2)
+    dr.text((margin, 10), "Planta rectificada del piso (homografía)", fill=(20, 20, 20), font=font(20))
+    dr.text((margin, 36), "rojo: baldosas cuadradas reconstruidas · celeste: 1 m", fill=(20, 20, 20), font=f)
+    dr.text((margin, margin + h_out + 34),
+            f"Baldosa ≈ {calib['tileSizeM'] * 100:.0f} cm · altura del ojo ≈ {calib['eyeHeightM']:.2f} m",
+            fill=(20, 20, 20), font=f)
+    canvas.save(ROOT / "docs" / "02_planta_rectificada.png")
+    canvas.save(ROOT / "public" / "data" / "planta.png")
+
+
+def write_report(c):
+    lines = [
+        "# Reporte del análisis geométrico",
+        "",
+        f"- Punto de fuga central: ({c['vanishingPoint'][0]:.1f}, {c['vanishingPoint'][1]:.1f}) px",
+        f"- Error de perspectiva: RMS {c['perspectiveErrorRmsPx']} px, máximo {c['perspectiveErrorMaxPx']} px, "
+        f"ángulo medio {c['perspectiveErrorMeanDeg']}° ({c['linesUsed']} rectas)",
+        f"- Distancia del ojo f = {c['focalPx']} px (muestras: {c['focalPxSamples']})",
+        f"- Puntos de distancia: {c['distancePoints']}",
+        f"- Distancia de observación en el museo ≈ {c['viewingDistanceCm']} cm (panel de {c['panelWidthCm']} cm)",
+        f"- Altura del ojo ≈ {c['eyeHeightM']} m (muestras: {c['eyeHeightSamples']})",
+        f"- Campo visual: {c['fovHorizontalDeg']}° horizontal x {c['fovVerticalDeg']}° vertical",
+        f"- Baldosa ≈ {c['tileSizeM']} m; borde frontal del piso a {c['floorFrontDepthM']} m del ojo",
+        f"- Homografía DLT: reproyección RMS {c['homographyDltReprojRmsPx']} px; "
+        f"diferencia con la analítica {c['homographyAgreementRmsPx']} px",
+    ]
+    (ROOT / "analysis" / "out" / "reporte.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()

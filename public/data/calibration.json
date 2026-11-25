@@ -1,0 +1,68 @@
+{
+  "imageWidth": 2996,
+  "imageHeight": 4226,
+  "vanishingPoint": [
+    791.36,
+    2284.32
+  ],
+  "horizonY": 2284.32,
+  "focalPx": 2266.45,
+  "focalPxSamples": [
+    2211.7,
+    2216.6,
+    2272.8,
+    2364.7
+  ],
+  "distancePoints": [
+    [
+      3003.0,
+      2284.3
+    ],
+    [
+      -1425.2,
+      2284.3
+    ],
+    [
+      3064.2,
+      2284.3
+    ],
+    [
+      3156.1,
+      2284.3
+    ]
+  ],
+  "eyeHeightM": 1.513,
+  "eyeHeightSamples": [
+    1.529,
+    1.497
+  ],
+  "perspectiveErrorRmsPx": 20.59,
+  "perspectiveErrorMaxPx": 89.16,
+  "perspectiveErrorMeanDeg": 0.438,
+  "linesUsed": 33,
+  "tileSizeM": 0.356,
+  "floorFrontDepthM": 2.135,
+  "homographyFloor": [
+    [
+      2266.4498,
+      791.3607,
+      0.0
+    ],
+    [
+      0.0,
+      2284.3214,
+      3428.6351
+    ],
+    [
+      0.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "homographyDltReprojRmsPx": 5.67,
+  "homographyAgreementRmsPx": 8.02,
+  "fovVerticalDeg": 85.81,
+  "fovHorizontalDeg": 63.46,
+  "viewingDistanceCm": 110.8,
+  "panelWidthCm": 146.5
+}

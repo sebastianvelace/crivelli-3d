@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="author" content="Sebastian Velandia Acevedo" />
+    <title>Marcador de líneas de fuga · Crivelli 3D</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #1b1814; color: #eee; display: flex; height: 100vh; }
+      #side { width: 300px; padding: 12px; overflow-y: auto; background: #26211b; box-sizing: border-box; font-size: 13px; }
+      #side h1 { font-size: 16px; margin: 0 0 8px; }
+      #side button, #side select { width: 100%; margin: 3px 0; padding: 6px; }
+      #side textarea { width: 100%; height: 160px; font-size: 11px; }
+      #wrap { flex: 1; overflow: hidden; position: relative; cursor: crosshair; }
+      canvas { position: absolute; left: 0; top: 0; }
+      .stat { background: #111; padding: 8px; border-radius: 4px; margin: 8px 0; line-height: 1.5; }
+      kbd { background: #444; padding: 0 4px; border-radius: 3px; }
+    </style>
+  </head>
+  <body>
+    <div id="side">
+      <h1>Marcador de líneas</h1>
+      <p>
+        Clic en los dos extremos de cada línea. Rueda: zoom. Arrastre con clic derecho: mover.
+        <kbd>Z</kbd> deshace la última.
+      </p>
+      <label>Tipo de línea</label>
+      <select id="kind">
+        <option value="orthogonals">Ortogonal (fuga al punto central)</option>
+        <option value="diagonals">Diagonal de baldosa (punto de distancia)</option>
+      </select>
+      <div class="stat" id="stats">Cargando…</div>
+      <button id="load">Cargar analysis/data/lines.json</button>
+      <button id="export">Exportar JSON (descarga)</button>
+      <button id="clear">Borrar todas las líneas de este tipo</button>
+      <label>JSON actual</label>
+      <textarea id="json" spellcheck="false"></textarea>
+      <p>Después de exportar: guarda el archivo como <code>analysis/data/lines.json</code> y ejecuta
+        <code>python analysis/geometry.py</code>.</p>
+    </div>
+    <div id="wrap"><canvas id="cv"></canvas></div>
+    <script type="module" src="./marcador.js"></script>
+  </body>
+</html>

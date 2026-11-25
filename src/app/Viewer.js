@@ -1,0 +1,303 @@
+import * as THREE from 'three';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { PictureSpace, resolvePlanes, buildElementGeometry } from '../core/pictureSpace.js';
+import { createProjectiveMaterial, createSharedUniforms } from '../core/projectiveMaterial.js';
+import { createPainterCamera, VisitorCamera } from '../core/cameras.js';
+import { createPerspectiveHelpers, createEyeMarker, HELPER_LAYER } from '../scene/perspectiveHelpers.js';
+
+const PAINTER_NEAR = 0.3;
+const PAINTER_FAR = 200;
+const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+
+/**
+ * Visor principal. Modos:
+ *   'eye'   -> en el ojo de Crivelli; la escena coincide con la pintura.
+ *   'walk'  -> primera persona (WASD + mouse con PointerLock).
+ *   'orbit' -> órbita libre alrededor de la calle.
+ *   'model' -> "maqueta": vista casi isométrica, como la reconstrucción de la Flagelación.
+ */
+export class Viewer {
+  constructor(container, calibration, sceneData, paintingTexture) {
+    this.container = container;
+    this.calib = calibration;
+    this.space = new PictureSpace(calibration);
+    this.mode = 'eye';
+    this.listeners = new Set();
+    this.animation = null;
+    this.keys = new Set();
+
+    // Renderer
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    container.appendChild(this.renderer.domElement);
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color('#17130f');
+
+    // Cámaras
+    this.painterCamera = createPainterCamera(this.space, PAINTER_NEAR, PAINTER_FAR);
+    this.camera = new VisitorCamera(this.space);
+    this.camera.position.copy(this.space.eye);
+    this.camera.layers.enable(HELPER_LAYER);
+
+    // Mapa de profundidad visto desde el ojo (para detectar zonas ocultas)
+    const rtW = 1400;
+    const rtH = Math.round((rtW * this.space.H) / this.space.W);
+    this.depthTarget = new THREE.WebGLRenderTarget(rtW, rtH, {
+      depthTexture: new THREE.DepthTexture(rtW, rtH, THREE.UnsignedIntType),
+    });
+
+    this.uniforms = createSharedUniforms(paintingTexture, this.depthTarget.depthTexture, PAINTER_NEAR, PAINTER_FAR);
+    this.uniforms.uPainterViewProj.value.multiplyMatrices(
+      this.painterCamera.projectionMatrix,
+      this.painterCamera.matrixWorldInverse,
+    );
+
+    this.buildPicture(sceneData);
+    this.buildHelpers(paintingTexture);
+    this.renderDepth();
+
+    // Controles
+    this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
+    this.orbit.enabled = false;
+    this.orbit.enableDamping = true;
+    this.pointerLock = new PointerLockControls(this.camera, this.renderer.domElement);
+    // OrbitControls reorienta la cámara hacia su target al crearse: restauramos el ojo.
+    this.camera.position.copy(this.space.eye);
+    this.camera.quaternion.identity();
+    this.renderer.domElement.addEventListener('click', () => {
+      if (this.mode === 'walk' && !this.animation) this.pointerLock.lock();
+    });
+    window.addEventListener('keydown', (e) => this.keys.add(e.code));
+    window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+
+    this.timer = new THREE.Timer();
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+    this.renderer.setAnimationLoop(() => this.tick());
+  }
+
+  // ---------------------------------------------------------------- escena
+
+  buildPicture(sceneData) {
+    this.planes = resolvePlanes(this.space, sceneData.elements);
+    this.pictureGroup = new THREE.Group();
+    this.elementMeshes = new Map();
+    const material = createProjectiveMaterial(this.uniforms);
+    for (const el of sceneData.elements) {
+      const geometry = buildElementGeometry(this.space, el, this.planes.get(el.id));
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.name = el.id;
+      mesh.userData = { label: el.label, kind: el.kind };
+      this.pictureGroup.add(mesh);
+      this.elementMeshes.set(el.id, mesh);
+    }
+    this.scene.add(this.pictureGroup);
+
+    // Suelo neutro "infinito" (solo visual, fuera de la proyección). Se dibuja
+    // primero y sin escribir profundidad: es un fondo, nunca tapa a la escena.
+    // (Un abanico centrado bajo la cámara tiene un vértice con w = 0 en clip
+    // space; algunos rasterizadores interpolan mal esa profundidad.)
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(240, 240),
+      new THREE.MeshBasicMaterial({ color: '#2a241d', depthWrite: false }),
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.set(0, -0.02, -60);
+    ground.renderOrder = -1;
+    ground.layers.set(HELPER_LAYER);
+    this.scene.add(ground);
+  }
+
+  buildHelpers(paintingTexture) {
+    this.helpers = createPerspectiveHelpers(this.space, this.calib, this.planes, paintingTexture);
+    this.helpers.visible = false;
+    this.eyeMarker = createEyeMarker(this.space);
+    this.eyeMarker.visible = false;
+    this.scene.add(this.helpers, this.eyeMarker);
+  }
+
+  /** Render de profundidad desde el ojo del pintor (una sola vez: la cámara no se mueve). */
+  renderDepth() {
+    // La cámara del pintor solo ve la capa 0 (la escena), no las ayudas.
+    this.scene.overrideMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false });
+    this.renderer.setRenderTarget(this.depthTarget);
+    this.renderer.clear();
+    this.renderer.render(this.scene, this.painterCamera);
+    this.renderer.setRenderTarget(null);
+    this.scene.overrideMaterial = null;
+  }
+
+  // ---------------------------------------------------------------- modos
+
+  onChange(fn) {
+    this.listeners.add(fn);
+  }
+
+  emit() {
+    for (const fn of this.listeners) fn(this);
+  }
+
+  setMode(mode) {
+    this.mode = mode;
+    this.orbit.enabled = mode === 'orbit' || mode === 'model';
+    if (mode !== 'walk' && this.pointerLock.isLocked) this.pointerLock.unlock();
+    this.eyeMarker.visible = mode === 'model' || this.helpers.visible;
+    this.emit();
+  }
+
+  /** Anima posición, orientación, "painterness" y FOV. */
+  animateTo({ position, quaternion, painterness, fov, duration = 2.5 }, onDone) {
+    this.orbit.enabled = false;
+    if (this.pointerLock.isLocked) this.pointerLock.unlock();
+    this.animation = {
+      t: 0,
+      duration,
+      from: {
+        position: this.camera.position.clone(),
+        quaternion: this.camera.quaternion.clone(),
+        painterness: this.camera.painterness,
+        fov: this.camera.freeFov,
+      },
+      to: {
+        position: position ?? this.camera.position.clone(),
+        quaternion: quaternion ?? this.camera.quaternion.clone(),
+        painterness: painterness ?? this.camera.painterness,
+        fov: fov ?? this.camera.freeFov,
+      },
+      onDone,
+    };
+    this.emit();
+  }
+
+  /** El momento clave: volver al ojo de Crivelli; la escena vuelve a ser la pintura. */
+  returnToEye(duration = 3.2) {
+    this.stopTour?.();
+    this.setMode('transition');
+    this.animateTo(
+      { position: this.space.eye.clone(), quaternion: new THREE.Quaternion(), painterness: 1, fov: 70, duration },
+      () => this.setMode('eye'),
+    );
+  }
+
+  enterWalk() {
+    const target = this.space.eye.clone().add(new THREE.Vector3(0, 0, -1.6));
+    this.setMode('transition');
+    this.animateTo(
+      { position: target, quaternion: new THREE.Quaternion(), painterness: 0, fov: 70, duration: 1.6 },
+      () => this.setMode('walk'),
+    );
+  }
+
+  enterOrbit() {
+    const target = new THREE.Vector3(-0.1, 1.3, -6);
+    const pos = new THREE.Vector3(-3.4, 3.4, 1.8);
+    this.setMode('transition');
+    this.animateTo(
+      { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov: 60, duration: 2.2 },
+      () => {
+        this.orbit.target.copy(target);
+        this.setMode('orbit');
+      },
+    );
+  }
+
+  enterModel() {
+    // Vista casi axonométrica: lejos y con un FOV muy estrecho (como una maqueta).
+    const target = new THREE.Vector3(0.4, 3, -11);
+    const dir = new THREE.Vector3(-0.55, 0.75, 1).normalize();
+    const pos = target.clone().addScaledVector(dir, 120);
+    this.setMode('transition');
+    this.eyeMarker.visible = true;
+    this.animateTo(
+      { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov: 11, duration: 2.6 },
+      () => {
+        this.orbit.target.copy(target);
+        this.setMode('model');
+      },
+    );
+  }
+
+  setHelpersVisible(v) {
+    this.helpers.visible = v;
+    this.eyeMarker.visible = v || this.mode === 'model';
+  }
+
+  /** 0..1: qué tanto estamos "dentro de la pintura" (en el ojo y con t = 1). */
+  eyeFactor() {
+    const dist = this.camera.position.distanceTo(this.space.eye);
+    const ang = this.camera.quaternion.angleTo(new THREE.Quaternion());
+    const k = Math.max(0, 1 - dist / 0.25) * Math.max(0, 1 - ang / 0.2);
+    return THREE.MathUtils.smoothstep(this.camera.painterness, 0.85, 1) * k;
+  }
+
+  // ---------------------------------------------------------------- bucle
+
+  resize() {
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    this.renderer.setSize(w, h);
+    this.camera.setViewport(w, h);
+    this.emit();
+  }
+
+  tick() {
+    this.timer.update();
+    const dt = Math.min(this.timer.getDelta(), 0.1);
+
+    if (this.animation) {
+      const a = this.animation;
+      a.t = Math.min(1, a.t + dt / a.duration);
+      const e = easeInOut(a.t);
+      this.camera.position.lerpVectors(a.from.position, a.to.position, e);
+      this.camera.quaternion.slerpQuaternions(a.from.quaternion, a.to.quaternion, e);
+      // El frustum cambia al final del viaje: así el "clic" de la pintura llega al llegar.
+      const pe = a.to.painterness > a.from.painterness ? easeInOut(Math.max(0, (a.t - 0.35) / 0.65)) : easeInOut(Math.min(1, a.t / 0.6));
+      this.camera.painterness = THREE.MathUtils.lerp(a.from.painterness, a.to.painterness, pe);
+      this.camera.freeFov = THREE.MathUtils.lerp(a.from.fov, a.to.fov, e);
+      this.camera.updateProjectionMatrix();
+      if (a.t >= 1) {
+        this.animation = null;
+        a.onDone?.();
+      }
+    } else if (this.mode === 'walk') {
+      this.walk(dt);
+    } else if (this.orbit.enabled) {
+      this.orbit.update();
+    }
+
+    // Perspectiva aérea: solo fuera del ojo (en el ojo manda la pintura).
+    this.uniforms.uFogAmount.value = (this.fogStrength ?? 0) * (1 - this.camera.painterness);
+    this.renderer.render(this.scene, this.camera);
+    this.onFrame?.(this);
+  }
+
+  walk(dt) {
+    const speed = (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? 4.5 : 1.8) * dt;
+    const forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+    const right = new THREE.Vector3().crossVectors(forward, this.camera.up).normalize();
+    const move = new THREE.Vector3();
+    if (this.keys.has('KeyW') || this.keys.has('ArrowUp')) move.add(forward);
+    if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) move.sub(forward);
+    if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) move.add(right);
+    if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) move.sub(right);
+    if (move.lengthSq() > 0) this.camera.position.addScaledVector(move.normalize(), speed);
+    if (this.keys.has('KeyE')) this.camera.position.y += speed;
+    if (this.keys.has('KeyQ')) this.camera.position.y = Math.max(0.3, this.camera.position.y - speed);
+  }
+
+  /** Captura PNG del canvas (para docs/). */
+  screenshot() {
+    return this.renderer.domElement.toDataURL('image/png');
+  }
+}
+
+export function lookQuaternion(from, to) {
+  const m = new THREE.Matrix4().lookAt(from, to, new THREE.Vector3(0, 1, 0));
+  return new THREE.Quaternion().setFromRotationMatrix(m);
+}

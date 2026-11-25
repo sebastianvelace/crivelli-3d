@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="author" content="Sebastian Velandia Acevedo" />
+    <meta name="description" content="Reconstrucción 3D recorrible de la Anunciación con san Emigdio de Carlo Crivelli (1486) a partir de su perspectiva." />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <title>Crivelli 3D · Entrar en la Anunciación</title>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- Marco y superposición de la pintura: solo visibles en el ojo de Crivelli -->
+    <div id="frame"></div>
+    <img id="overlay" alt="" />
+
+    <header id="hud">
+      <h1>La Anunciación con san Emigdio <span>Carlo Crivelli, 1486</span></h1>
+      <p id="hud-mode"></p>
+      <p id="hud-numbers"></p>
+    </header>
+    <p id="hint"></p>
+    <p id="caption"></p>
+
+    <aside id="plan">
+      <h2>Planta rectificada del piso</h2>
+      <img id="plan-img" alt="Planta del piso de la calle obtenida con una homografía" />
+    </aside>
+
+    <dialog id="credits">
+      <h2>Créditos y fuentes</h2>
+      <p>
+        Trabajo final de la electiva <em>Galileo</em> (Universidad Nacional de Colombia, Bogotá).
+        Autor: <strong>Sebastian Velandia Acevedo</strong>.
+      </p>
+      <p>
+        <strong>Pintura:</strong> Carlo Crivelli, <em>La Anunciación con san Emigdio</em>, 1486, 207 × 146,5 cm, National Gallery, Londres (NG739).
+        Reproducción de dominio público tomada de
+        <a href="https://commons.wikimedia.org/wiki/File:The_Annunciation,_with_Saint_Emidius_-_Carlo_Crivelli_-_National_Gallery.jpg" target="_blank" rel="noopener">Wikimedia Commons</a>.
+      </p>
+      <ul>
+        <li>A. Criminisi, I. Reid y A. Zisserman, «Single View Metrology», <em>International Journal of Computer Vision</em> 40(2), 2000.</li>
+        <li>A. Criminisi, M. Kemp y A. Zisserman, «Bringing Pictorial Space to Life: Computer Techniques for the Analysis of Paintings», 2003.</li>
+        <li>Y. Horry, K. Anjyo y K. Arai, «Tour Into the Picture», SIGGRAPH 1997.</li>
+        <li>M. Kemp, <em>The Science of Art</em>, Yale University Press, 1990.</li>
+        <li>E. Panofsky, <em>Galileo as a Critic of the Arts</em>, Martinus Nijhoff, 1954.</li>
+        <li>L. B. Alberti, <em>De pictura</em>, 1435.</li>
+      </ul>
+      <p>Hecho con three.js, lil-gui y Vite. Análisis geométrico en Python (NumPy y Pillow).</p>
+      <button id="credits-close">Cerrar</button>
+    </dialog>
+
+    <div id="loading">Cargando la pintura…</div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
