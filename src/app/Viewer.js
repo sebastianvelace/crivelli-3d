@@ -81,8 +81,19 @@ export class Viewer {
     this.renderer.domElement.addEventListener('click', () => {
       if (this.mode === 'walk' && !this.animation) this.pointerLock.lock();
     });
-    window.addEventListener('keydown', (e) => this.keys.add(e.code));
+    // Teclas apretadas. Si la ventana pierde el foco (Esc del pointer lock, cambio
+    // de pestaña, clic en el panel) el navegador no envía "keyup" y la tecla quedaría
+    // apretada para siempre: por eso se vacía el conjunto en esos casos.
+    const typing = (e) => e.target instanceof HTMLElement && e.target.closest('input, select, textarea');
+    window.addEventListener('keydown', (e) => {
+      if (!typing(e) && !e.repeat) this.keys.add(e.code);
+    });
     window.addEventListener('keyup', (e) => this.keys.delete(e.code));
+    const releaseAll = () => this.keys.clear();
+    window.addEventListener('blur', releaseAll);
+    document.addEventListener('visibilitychange', releaseAll);
+    document.addEventListener('pointerlockchange', releaseAll);
+    this.renderer.domElement.addEventListener('contextmenu', releaseAll);
 
     this.timer = new THREE.Timer();
     this.resize();
@@ -109,6 +120,7 @@ export class Viewer {
       const material = createProjectiveMaterial(this.uniforms, {
         uInferred: { value: inferred?.textures.get(el.id) ?? null },
         uBackColor: { value: new THREE.Color(info?.backColor ?? '#6e6456') },
+        uIsFigure: { value: el.kind === 'figure' ? 1 : 0 },
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = el.id;

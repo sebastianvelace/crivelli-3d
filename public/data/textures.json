@@ -10,9 +10,9 @@
    2048,
    2048
   ],
-  "seenFraction": 0.521,
+  "seenFraction": 0.518,
   "method": "inpaint",
-  "backColor": "#4c4c41",
+  "backColor": "#4b4c41",
   "file": "textures/fondo_cielo.jpg"
  },
  "piso_calle": {
@@ -58,9 +58,9 @@
    786,
    1814
   ],
-  "seenFraction": 0.744,
+  "seenFraction": 0.735,
   "method": "inpaint",
-  "backColor": "#534633",
+  "backColor": "#534533",
   "file": "textures/pared_izquierda.jpg"
  },
  "pared_derecha": {
@@ -90,7 +90,7 @@
    795,
    135
   ],
-  "seenFraction": 0.717,
+  "seenFraction": 0.713,
   "method": "inpaint",
   "backColor": "#706d62",
   "file": "textures/escalones.jpg"
@@ -106,9 +106,9 @@
    993,
    634
   ],
-  "seenFraction": 0.719,
+  "seenFraction": 0.59,
   "method": "inpaint",
-  "backColor": "#615341",
+  "backColor": "#665846",
   "file": "textures/plataforma.jpg"
  },
  "arco_fondo": {
@@ -122,7 +122,7 @@
    995,
    1589
   ],
-  "seenFraction": 0.864,
+  "seenFraction": 0.854,
   "method": "inpaint",
   "backColor": "#5a4d39",
   "file": "textures/arco_fondo.jpg"
@@ -138,7 +138,7 @@
    1074,
    2048
   ],
-  "seenFraction": 0.675,
+  "seenFraction": 0.662,
   "method": "inpaint",
   "backColor": "#4d4432",
   "file": "textures/patio_fondo.jpg"
@@ -234,7 +234,7 @@
    258,
    471
   ],
-  "seenFraction": 0.66,
+  "seenFraction": 0.654,
   "method": "inpaint",
   "backColor": "#3c2d1b",
   "file": "textures/cuarto_fondo.jpg"
@@ -250,9 +250,9 @@
    426,
    345
   ],
-  "seenFraction": 0.11,
+  "seenFraction": 0.107,
   "method": "inpaint",
-  "backColor": "#635742",
+  "backColor": "#645843",
   "file": "textures/cuarto_piso.jpg"
  },
  "fraile": {
@@ -260,47 +260,47 @@
    -1.8055753749865118,
    -0.03673518938167675,
    -1.2300574080069067,
-   1.3959371965037235
+   1.6326750836300858
   ],
   "size": [
    126,
-   315
+   367
   ],
-  "seenFraction": 0.991,
+  "seenFraction": 0.992,
   "method": "inpaint",
-  "backColor": "#39291d",
+  "backColor": "#3d2d21",
   "file": "textures/fraile.jpg"
  },
  "hombre_dorado": {
   "bounds": [
    0.14557765043721219,
-   0.6983129171625192,
-   1.0040855021472554,
-   2.336324830547939
+   0.5666399337714083,
+   1.0778223728462777,
+   2.404794781911317
   ],
   "size": [
-   188,
-   360
+   205,
+   404
   ],
-  "seenFraction": 1.0,
+  "seenFraction": 0.995,
   "method": "inpaint",
-  "backColor": "#46311b",
+  "backColor": "#483621",
   "file": "textures/hombre_dorado.jpg"
  },
  "puente_figuras": {
   "bounds": [
-   -1.2760253172386558,
+   -1.2822389192898764,
    7.554609546442783,
    0.047471919671325045,
-   8.461795445920986
+   8.561213078740515
   ],
   "size": [
-   291,
-   199
+   292,
+   221
   ],
   "seenFraction": 1.0,
   "method": "inpaint",
-  "backColor": "#3d3a31",
+  "backColor": "#45433b",
   "file": "textures/puente_figuras.jpg"
  },
  "puente_planta": {
@@ -308,15 +308,15 @@
    0.7931041658177931,
    7.591891158750106,
    1.4206779729910703,
-   8.561213078740515
+   8.598494691047838
   ],
   "size": [
    138,
-   213
+   221
   ],
-  "seenFraction": 0.942,
+  "seenFraction": 0.946,
   "method": "inpaint",
-  "backColor": "#343220",
+  "backColor": "#373624",
   "file": "textures/puente_planta.jpg"
  },
  "balcon_figuras": {
@@ -332,7 +332,7 @@
   ],
   "seenFraction": 1.0,
   "method": "inpaint",
-  "backColor": "#4a3b2b",
+  "backColor": "#4a3c2b",
   "file": "textures/balcon_figuras.jpg"
  },
  "nino": {
@@ -348,7 +348,7 @@
   ],
   "seenFraction": 1.0,
   "method": "inpaint",
-  "backColor": "#564d3c",
+  "backColor": "#584f3f",
   "file": "textures/nino.jpg"
  },
  "emigdio": {
@@ -386,17 +386,17 @@
  "atril": {
   "bounds": [
    1.0526906290115532,
-   0.035405300599058664,
+   0.004046320068463949,
    1.343014093923834,
    0.9164914955070603
   ],
   "size": [
    63,
-   193
+   200
   ],
-  "seenFraction": 0.952,
+  "seenFraction": 0.953,
   "method": "inpaint",
-  "backColor": "#35260f",
+  "backColor": "#362610",
   "file": "textures/atril.jpg"
  },
  "maria": {
@@ -404,11 +404,11 @@
    1.2603988207420174,
    0.024441333261536746,
    1.801163319153519,
-   1.1925333853858167
+   1.2159563297614562
   ],
   "size": [
    118,
-   256
+   262
   ],
   "seenFraction": 1.0,
   "method": "inpaint",

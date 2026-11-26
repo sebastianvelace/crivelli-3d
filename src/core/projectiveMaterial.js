@@ -15,7 +15,7 @@ export const FILL_MODES = { fiel: 0, neutro: 1, inferido: 2 };
  * ojo con la del mapa de profundidad visto desde el ojo. Si algo lo tapaba en la
  * pintura, el pintor nunca vio ese trozo. Qué se muestra ahí depende del modo:
  *   fiel     -> nada (el fragmento se descarta: se ve el hueco de información)
- *   neutro   -> color yeso
+ *   neutro   -> color yeso (salvo en los huecos chicos de las figuras: inpainting)
  *   inferido -> la textura plana horneada por analysis/infer.py (regla o inpainting)
  */
 export function createProjectiveMaterial(shared, perElement) {
@@ -42,6 +42,7 @@ export function createProjectiveMaterial(shared, perElement) {
       uniform sampler2D uDepth;
       uniform sampler2D uInferred;  // textura plana del elemento (vista + inferida)
       uniform vec3 uBackColor;      // reverso de los cartones en el modo inferido
+      uniform float uIsFigure;      // 1 = cartón de una figura
       uniform float uNear;
       uniform float uFar;
       uniform float uMode;          // 0 fiel, 1 neutro, 2 inferido
@@ -83,7 +84,10 @@ export function createProjectiveMaterial(shared, perElement) {
         vec3 color;
         if (seen) {
           color = texture2D(uPainting, uv).rgb;
-        } else if (uMode > 1.5) {
+        } else if (uMode > 1.5 || (uIsFigure > 0.5 && gl_FrontFacing)) {
+          // En las figuras lo oculto son huecos chicos (un brazo que tapaba otra
+          // figura): ahí el inpainting reconstruye bien, así que se usa también en
+          // el modo neutro para no agujerear los cartones.
           color = gl_FrontFacing ? texture2D(uInferred, vUv).rgb : uBackColor * light;
         } else {
           color = uNeutral * light * (gl_FrontFacing ? 1.0 : 0.78);

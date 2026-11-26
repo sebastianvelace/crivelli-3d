@@ -10,6 +10,10 @@ modelando sus colores con mezclas de gaussianas y cortando un grafo:
   - figura probable: dentro del ROI
   - figura segura:   el ROI erosionado (el centro del cuerpo)
 
+Opciones por figura en scene.json ("segment"): "core" fija la erosión del núcleo y
+"keepAbove" conserva el ROI por encima de esa fila (cabezas o cabellos que GrabCut
+confunde con el fondo).
+
 El contorno del resultado (simplificado a ~1,5 px) reemplaza al polígono; el
 original se conserva en "roi" para poder repetir el proceso. Si una silueta no
 convence, se corrige a mano con analysis/marcador.html (modo polígonos).
@@ -31,7 +35,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parent.parent
 SCENE = ROOT / "public/data/scene.json"
 BAND = 28        # px: franja de "fondo probable" alrededor del ROI
-CORE = 34        # px: erosión para la "figura segura"
+CORE = 34        # px: erosión máxima para la "figura segura" (se adapta al tamaño)
 EPS = 1.5        # px: tolerancia de simplificación del contorno
 MIN_AREA = 400   # px²: componentes o huecos menores se descartan
 
@@ -58,9 +62,14 @@ def segment(img, el):
     local_holes = [[[p[0] - x0, p[1] - y0] for p in h] for h in holes]
     roi = roi_mask(crop.shape, local, local_holes)
 
+    opts = el.get("segment", {})
     k = lambda r: cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
     dil = cv2.dilate(roi, k(BAND))
-    core = cv2.erode(roi, k(CORE))
+    # Núcleo "figura segura" proporcional al tamaño: en figuras chicas una erosión
+    # fija de 34 px se comía la cabeza entera y GrabCut la podía descartar.
+    bw, bh = pts.max(axis=0) - pts.min(axis=0)
+    core_r = int(opts.get("core", np.clip(0.07 * min(bw, bh), 6, CORE)))
+    core = cv2.erode(roi, k(core_r))
     mask = np.full(roi.shape, cv2.GC_BGD, np.uint8)
     mask[dil > 0] = cv2.GC_PR_BGD
     mask[roi > 0] = cv2.GC_PR_FGD
@@ -72,6 +81,11 @@ def segment(img, el):
     # Limpieza: cerrar grietas finas y quedarse con la componente principal
     fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k(3))
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, k(2))
+    # Por encima de la fila "keepAbove" (cabezas, cabellos, aureolas) GrabCut confunde
+    # la figura con el fondo de color parecido: ahí se conserva el ROI trazado a mano.
+    if "keepAbove" in opts:
+        top = max(0, min(roi.shape[0], int(opts["keepAbove"]) - y0))
+        fg[:top] = np.maximum(fg[:top], roi[:top])
     n, lab, stats, _ = cv2.connectedComponentsWithStats(fg)
     if n > 1:
         main = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
