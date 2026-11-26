@@ -52,7 +52,7 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python analysis/geometry.py
 ```
 
-Lee `analysis/data/lines.json` y escribe `public/data/calibration.json`, `docs/01_lineas_de_fuga.jpg`, `docs/02_planta_rectificada.png` y `analysis/out/reporte.md`. Si marcás líneas nuevas con `marcador.html`, exportá el JSON, reemplazá `analysis/data/lines.json` y volvé a correr el script.
+Lee `analysis/data/lines.json` y escribe `public/data/calibration.json`, `docs/01_lineas_de_fuga.jpg`, `docs/02_planta_rectificada.png` y `analysis/out/reporte.md`. Si marcas líneas nuevas con `marcador.html`, exporta el JSON, reemplaza `analysis/data/lines.json` y vuelve a ejecutar el script.
 
 ### Repetir el modo inferido
 
@@ -153,7 +153,6 @@ Un portal de stencil restringe el dibujo de la calle al interior del marco cuand
 | Tamaño de la baldosa | ≈ 36 cm |
 | Homografía del piso | la DLT reproyecta con 5,7 px RMS y difiere de la analítica en 8,0 px |
 
-Una curiosidad: el punto de distancia derecho que dan las baldosas de la hilera frontal cae en x ≈ 3003 px, prácticamente en el borde derecho del panel (2996 px). No sabemos si Crivelli lo hizo a propósito. Es una coincidencia notable y queda como pregunta abierta para la sustentación.
 
 | | |
 | --- | --- |
@@ -244,13 +243,13 @@ Por construcción, cada vértice visto desde el ojo cae sobre su píxel. **Por e
 
 Cada fragmento se proyecta con la matriz (proyección · vista) del pintor. Sus coordenadas NDC, llevadas a [0, 1], son la coordenada de textura dentro de la pintura: es la ventana de Alberti al revés.
 
-Desde la posición exacta del ojo el propio render resuelve qué superficie se ve primero, y todas las superficies de un mismo rayo muestrean el mismo píxel. Fuera del ojo, para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow map*. Primero renderizamos la profundidad de la escena desde el ojo. Si un fragmento está más lejos que lo primero que el ojo ve en esa dirección, queda oculto en la pintura y se pinta de color «yeso» neutro (con la opción *Resaltar zonas ocultas* se ve en rosa). Las caras traseras también son neutras: los cartones tienen el reverso liso.
+Desde la posición exacta del ojo el propio render resuelve qué superficie se ve primero, y todas las superficies de un mismo rayo muestrean el mismo píxel. Fuera del ojo, para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow map*. Primero renderizamos la profundidad de la escena desde el ojo. Si un fragmento está más lejos que lo primero que el ojo ve en esa dirección, queda oculto en la pintura y se pinta de color «yeso» neutro (se marca en rosa con *Marcar lo inferido*, en *Opciones → Perspectiva y geometría*). Las caras traseras también son neutras: los cartones tienen el reverso liso.
 
 ---
 
 ## Supuestos y decisiones
 
-1. **Un único punto de fuga.** Las líneas de la calle, de las fachadas y del techo del cuarto de María fugan al mismo punto; el cuadro es vertical.
+1. **Un único punto de fuga.** Las líneas de la calle y de la fachada izquierda de la casa de María fugan a un mismo punto; la mitad derecha se analiza en la sección de consistencia.
 2. **Baldosas cuadradas** para calcular la distancia del ojo.
 3. **Alturas de las figuras:** el fraile del fondo mide 1,65 m (con gorro) y Gabriel arrodillado, 1,20 m. Fijan la escala.
 4. **Escalones:** se modelan como un solo plano frontal (la contrahuella) más una plataforma horizontal. La altura que resulta, ≈ 0,6 m para tres escalones, es razonable.
@@ -298,26 +297,11 @@ RESENA.md                     reseña de una página (objetivo y relación con G
 
 ---
 
-## Plan de trabajo (unas 15 h)
+## Trabajo futuro
 
-| Hito | Horas | Estado |
-| --- | --- | --- |
-| 1. Imagen, marcado de líneas, punto de fuga y error | 2 | ✅ |
-| 2. Distancia del ojo, altura, homografía y planta | 2 | ✅ |
-| 3. Cámara alineada en three.js y superposición | 2 | ✅ |
-| 4. Piso, fachadas, interior y fondo (scene.json) | 3 | ✅ |
-| 5. Cartones de las figuras | 1,5 | ✅ |
-| 6. Controles, «Volver al ojo» y panel | 2 | ✅ |
-| 7. README, RESENA y capturas | 1,5 | ✅ |
-| 8. Extras: perspectiva aérea y recorrido guiado | 1 | ✅ (básicos) |
-| 9. Modos fiel, neutro e inferido (evidencia, inpainting) | 4 | ✅ |
-| 10. Siluetas con GrabCut y editor de polígonos | 2 | ✅ |
-| 11. Herramienta de medición | 2 | ✅ |
-| 12. Museo y ventana de Alberti | 3 | ✅ |
-| 13. Portal, límites de marcha y marca del ojo | — | ✅ |
-| 14. Recorrido con mediciones y controles para pantallas táctiles | — | ✅ |
-
-**Pendientes:** cerrar el cuarto de María con caras laterales, dar grosor a pilastras y cornisas, y explorar la sensibilidad de la reconstrucción a la altura de referencia y la distancia focal.
+- Cerrar el cuarto de María con caras laterales.
+- Dar grosor a pilastras y cornisas.
+- Explorar la sensibilidad a la escala y la distancia focal.
 
 ---
 
