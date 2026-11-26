@@ -128,11 +128,11 @@ export function createMuseum(space, calib, paintingTexture) {
   ring.rotation.x = -Math.PI / 2;
   ring.position.set(0, 0.006, 0);
   const label = textPlane(
-    ['EL OJO DE CRIVELLI', `ojo a ${calib.eyeHeightM.toFixed(2).replace('.', ',')} m · a ${Math.round(d * 100)} cm del cuadro`],
-    1.02, 0.29, { bg: '#2a1a14', fg: '#ffe277', size: 54 },
+    ['EL OJO DE CRIVELLI', `${calib.eyeHeightM.toFixed(2).replace('.', ',')} m de alto · a ${Math.round(d * 100)} cm del cuadro`],
+    1.25, 0.35, { bg: '#2a1a14', fg: '#ffe277', size: 64 },
   );
-  label.rotation.x = -Math.PI / 2;
-  label.position.set(0, 0.007, -0.36);
+  label.rotation.x = -Math.PI * 0.39;
+  label.position.set(0, 0.065, -0.4);
   const eyeDot = new THREE.Mesh(
     new THREE.SphereGeometry(0.035, 16, 12),
     new THREE.MeshBasicMaterial({ color: '#ffe277' }),
