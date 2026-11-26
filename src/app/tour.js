@@ -6,7 +6,7 @@ const STOPS = [
   { caption: 'La Anunciación cuelga en el museo a su tamaño real.', pose: 'museum', hold: 4 },
   { caption: 'La marca amarilla señala el lugar desde donde Crivelli construyó la perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 4, hold: 2 },
   { caption: 'Al llegar al ojo, el cuadro se abre. La calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 5 },
-  { caption: 'María y Gabriel miden casi lo mismo de rodillas. La escala también se conserva al fondo de la calle.', pose: 'eye', measure: true, hold: 5 },
+  { caption: 'La altura de Gabriel se supuso para fijar la escala; la de María es una predicción: sale 1,22 m de rodillas. Al fondo, el hombre del manto dorado mide 1,83 m: Crivelli no es del todo coherente.', pose: 'eye', measure: true, hold: 5 },
   { caption: 'Entramos al cuadro. El piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 4, hold: 2 },
   { caption: 'En el muro izquierdo se ven la escalera, el niño y las figuras del balcón.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
   { caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1], fill: 'fiel', travel: 4, hold: 3 },
