@@ -86,6 +86,14 @@ export class Viewer {
         this.pointerLock.lock();
       }
     });
+    this.renderer.domElement.addEventListener('wheel', (event) => {
+      if (this.mode !== 'walk' || this.animation || event.ctrlKey) return;
+      event.preventDefault();
+      const scale = event.deltaMode === WheelEvent.DOM_DELTA_LINE ? 16 :
+        event.deltaMode === WheelEvent.DOM_DELTA_PAGE ? this.camera.viewportH : 1;
+      const fov = this.walkFov ?? this.camera.freeFov;
+      this.walkFov = THREE.MathUtils.clamp(fov * Math.exp(event.deltaY * scale * 0.0012), 26, 80);
+    }, { passive: false });
     // Teclas apretadas. Si la ventana pierde el foco (Esc del pointer lock, cambio
     // de pestaña, clic en el panel) el navegador no envía "keyup" y la tecla quedaría
     // apretada para siempre: por eso se vacía el conjunto en esos casos.
@@ -234,6 +242,7 @@ export class Viewer {
   }
 
   setMode(mode) {
+    if (mode !== 'walk') this.walkFov = null;
     this.mode = mode;
     this.exteriorTransition = false;
     this.walkBlocked = false;
@@ -244,7 +253,7 @@ export class Viewer {
   }
 
   /** Anima posición, orientación, "painterness" y FOV. */
-  animateTo({ position, quaternion, painterness, fov, duration = 2.5 }, onDone) {
+  animateTo({ position, quaternion, painterness, fov, duration = 2.5, onProgress }, onDone) {
     this.orbit.enabled = false;
     if (this.pointerLock.isLocked) this.pointerLock.unlock();
     this.animation = {
@@ -262,6 +271,7 @@ export class Viewer {
         painterness: painterness ?? this.camera.painterness,
         fov: fov ?? this.camera.freeFov,
       },
+      onProgress,
       onDone,
     };
     this.emit();
@@ -288,17 +298,35 @@ export class Viewer {
   }
 
   /** Volver a la sala: el cuadro vuelve a ser un objeto colgado en la pared. */
-  enterMuseum(onDone) {
+  enterMuseum(onDone, { fromEntrance = false, duration = 3, onProgress } = {}) {
     this.stopTour?.();
     const { position, target } = this.museum.startPose;
+    const quaternion = lookQuaternion(position, target);
+    const arrive = () => {
+      this.windowOpen = false;
+      this.setMode('museum');
+      onDone?.();
+    };
+    if (fromEntrance) {
+      this.animation = null;
+      this.windowOpen = false;
+      this.panelOpacity = 1;
+      this.museum.setPanelOpacity(1);
+      this.camera.position.copy(position);
+      if (duration > 0) this.camera.position.add(new THREE.Vector3(0.32, 0.13, 1.05));
+      this.camera.quaternion.copy(lookQuaternion(this.camera.position, target));
+      this.camera.painterness = 0;
+      this.camera.freeFov = 60;
+      this.camera.updateProjectionMatrix();
+      if (duration === 0) {
+        arrive();
+        return;
+      }
+    }
     this.setMode('transition');
     this.animateTo(
-      { position: position.clone(), quaternion: lookQuaternion(position, target), painterness: 0, fov: 60, duration: 3 },
-      () => {
-        this.windowOpen = false;
-        this.setMode('museum');
-        onDone?.();
-      },
+      { position, quaternion, painterness: 0, fov: 60, duration, onProgress },
+      arrive,
     );
   }
 
@@ -402,11 +430,20 @@ export class Viewer {
       this.camera.painterness = THREE.MathUtils.lerp(a.from.painterness, a.to.painterness, pe);
       this.camera.freeFov = THREE.MathUtils.lerp(a.from.fov, a.to.fov, e);
       this.camera.updateProjectionMatrix();
+      a.onProgress?.(a.t);
       if (a.t >= 1) {
         this.animation = null;
         a.onDone?.();
       }
     } else if (!this.animation && this.mode === 'walk') {
+      if (this.walkFov != null) {
+        this.camera.freeFov = THREE.MathUtils.damp(this.camera.freeFov, this.walkFov, 13, dt);
+        if (Math.abs(this.camera.freeFov - this.walkFov) < 0.05) {
+          this.camera.freeFov = this.walkFov;
+          this.walkFov = null;
+        }
+        this.camera.updateProjectionMatrix();
+      }
       this.walk(dt);
     } else if (this.orbit.enabled) {
       this.orbit.update();

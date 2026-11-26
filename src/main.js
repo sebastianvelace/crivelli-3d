@@ -83,7 +83,7 @@ function setupOverlays(viewer, calib) {
   const modeText = {
     museum: ['En el museo', 'Elige «Ojo» para ver cómo se abre el cuadro.'],
     eye: ['En el ojo de Crivelli', 'Elige «Caminar» para cruzar el marco.'],
-    walk: ['Caminando', 'Haz clic para mirar · WASD para caminar · Shift para correr · Q/E para bajar y subir · Esc para soltar'],
+    walk: ['Caminando', 'Clic para mirar · WASD para caminar · rueda para acercar · Q/E para subir y bajar · Esc suelta el mouse'],
     orbit: ['Vista en órbita', 'Arrastra para girar · usa la rueda para acercarte'],
     model: ['Vista de maqueta', 'El punto dorado marca el ojo del pintor.'],
     transition: ['Cambiando de vista…', ''],
@@ -315,7 +315,7 @@ function setupControls(viewer, calib) {
   viewer.emit();
 
   window.addEventListener('keydown', (event) => {
-    if (experience.hidden || document.getElementById('credits').open) return;
+    if (experience.hidden || experience.inert || document.getElementById('credits').open) return;
     if (event.code === 'Escape' && openTool) showTool(null);
     else if (event.code === 'Escape' && tour.active) tour.stop();
     else if (event.code === 'KeyR' && !event.repeat && !event.target.closest?.('input, select, textarea')) viewer.returnToEye();
@@ -342,6 +342,7 @@ function setupNavigation() {
   const buttons = [...home.querySelectorAll('[data-entry]')];
   const duration = document.getElementById('tour-duration');
   duration.textContent = `Recorrido · ${Math.floor(TOUR_SECONDS / 60)} min ${TOUR_SECONDS % 60} s`;
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   let scene = null;
   let pending = false;
   let lastEntry;
@@ -349,9 +350,9 @@ function setupNavigation() {
   for (const button of buttons) {
     button.addEventListener('click', async () => {
       if (pending) return;
+      pending = true;
       lastEntry = button;
       if (!scene) {
-        pending = true;
         buttons.forEach((entry) => { entry.disabled = true; });
         loading.hidden = progress.hidden = false;
         progress.removeAttribute('value');
@@ -362,27 +363,50 @@ function setupNavigation() {
           console.error(error);
           progress.hidden = true;
           message.textContent = 'No se pudo abrir el visor 3D. Comprueba que tu navegador tenga WebGL habilitado y vuelve a intentarlo.';
+          pending = false;
           return;
         } finally {
-          pending = false;
           buttons.forEach((entry) => { entry.disabled = false; });
           if (scene) loading.hidden = true;
           else if (!artworkInfo.open) button.focus();
         }
       }
-      home.hidden = true;
+
+      const travel = reducedMotion.matches ? 0 : 1.45;
+      const fading = travel > 0;
+      if (fading) {
+        home.style.top = `${-window.scrollY}px`;
+        home.dataset.leaving = '';
+      } else {
+        home.hidden = true;
+      }
+      home.inert = true;
+      experience.inert = true;
       experience.hidden = false;
       window.scrollTo(0, 0);
       const { viewer, tour } = scene;
+      viewer.renderer.setAnimationLoop(null);
       viewer.keys.clear();
       viewer.resize();
       viewer.timer.reset();
+      // Cámara y fundido comparten el mismo avance para mantenerlos sincronizados.
+      const onProgress = fading ? (t) => { home.style.opacity = 1 - THREE.MathUtils.smoothstep(t, 0.02, 0.93); } : undefined;
+      const arrival = new Promise((resolve) => viewer.enterMuseum(resolve, { fromEntrance: true, duration: travel, onProgress }));
+      viewer.tick();
+      viewer.timer.reset();
       viewer.renderer.setAnimationLoop(() => viewer.tick());
+      await arrival;
+      home.hidden = true;
+      delete home.dataset.leaving;
+      home.style.removeProperty('top');
+      home.style.removeProperty('opacity');
+      experience.inert = false;
+      viewer.keys.clear();
+      pending = false;
       if (button.dataset.entry === 'tour') {
         tour.start();
         document.getElementById('tour-pause').focus({ preventScroll: true });
       } else {
-        if (viewer.mode !== 'museum') viewer.enterMuseum();
         document.getElementById('viewer-title').focus({ preventScroll: true });
       }
     });
@@ -399,6 +423,7 @@ function setupNavigation() {
     if (viewer.pointerLock.isLocked) viewer.pointerLock.unlock();
     experience.hidden = true;
     home.hidden = false;
+    home.inert = false;
     lastEntry.focus({ preventScroll: true });
   });
 }

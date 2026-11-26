@@ -28,7 +28,7 @@ npm run dev
 | --- | --- |
 | *Ojo* (o tecla `R`) | Anima la cámara de regreso al punto de vista del pintor |
 | *Museo* | Vuelve a la sala: el cuadro es otra vez un objeto colgado |
-| *Caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
+| *Caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Usa la rueda para acercar o alejar. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
 | *Opciones → Perspectiva y geometría → Vista en órbita* | Girar, acercar y desplazar con el mouse |
 | *Maqueta* | Vista casi axonométrica de toda la reconstrucción |
 | *Opciones → Superficies ocultas* | Modo fiel, neutro (por defecto) o inferido |

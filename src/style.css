@@ -94,6 +94,14 @@ a { color: var(--accent); text-underline-offset: 0.16em; }
   grid-template-rows: auto 1fr;
 }
 
+#home[data-leaving] {
+  position: fixed;
+  inset: 0;
+  z-index: 6;
+  background: var(--paper);
+  pointer-events: none;
+}
+
 .home-header {
   display: flex;
   justify-content: space-between;
