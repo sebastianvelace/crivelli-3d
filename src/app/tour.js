@@ -8,7 +8,7 @@ const STOPS = [
   { caption: 'Al llegar al ojo, el cuadro se abre. La calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 5 },
   { caption: 'María y Gabriel miden casi lo mismo de rodillas. La escala también se conserva al fondo de la calle.', pose: 'eye', measure: true, hold: 5 },
   { caption: 'Entramos al cuadro. El piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 4, hold: 2 },
-  { caption: 'Las huellas y las contrahuellas dan volumen a la escalera del niño.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
+  { caption: 'En el muro izquierdo se ven la escalera, el niño y las figuras del balcón.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
   { caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1], fill: 'fiel', travel: 4, hold: 3 },
   { caption: 'En modo inferido, los fragmentos ocultos se completan a partir de la textura visible.', fill: 'inferido', hold: 4 },
   { caption: 'La casa de María tiene una fachada, un techo de vigas y un cuarto detrás de las pilastras.', pos: [-0.4, 1.4, -2.3], look: [2.1, 1.3, -3.2], fill: 'neutro', travel: 5, hold: 3 },

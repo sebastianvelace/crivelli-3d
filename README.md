@@ -86,7 +86,7 @@ El modo inferido rellena el resto **por continuidad (inpainting)**: El resto se 
 
 La lámina `docs/07_mascaras_de_evidencia.jpg` muestra, para cada elemento, qué fracción vio el pintor (por ejemplo, del piso de la calle solo el 25 %; de la fachada de María, el 96 %).
 
-El borde lejano del muro derecho se recortó donde empieza el puente para dejar a la vista al hombre del manto dorado y la maceta. En el balcón izquierdo, se recortó el muro lateral y se retranqueó el fondo para conservar la oclusión de las figuras según sus siluetas.
+El borde lejano del muro derecho se recortó donde empieza el puente para dejar a la vista al hombre del manto dorado y la maceta. En el balcón izquierdo, las figuras se adelantaron 1,1 m respecto de su anclaje en la pared lateral. Ese desplazamiento es un supuesto para mantenerlas visibles.
 
 ---
 
@@ -124,23 +124,6 @@ Es la idea central de la *single view metrology* de Criminisi: cada clic es un r
 El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. Mide 146,5 cm de ancho, está a 111 cm del ojo y tiene el punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. El anillo y la cartela señalan el punto en el piso, y una esfera indica la altura del ojo. La maqueta conserva la línea vertical auxiliar para leer esa altura respecto del suelo.
 
 Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. El mapa de profundidad de la pintura se calcula por separado. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. Entre el marco y el piso pintado hay un pequeño umbral de yeso marcado como `assumed`, visible desde la calle y excluido del mapa de profundidad. En órbita y maqueta se ocultan la sala y el portal.
-
-### Escalera del niño y balcón izquierdo
-
-Se adoptó la hipótesis A. La junta visible del bloque con la sillería lateral, cerca de `u = 300`, fija el frente a **7,53 m** si se aproxima por un plano frontal. El apoyo de los pies del niño, cerca de `(120, 2129)`, levanta el descanso a **2,03 m** sobre la calle. Usar un pie de escalera en `v = 2650` daría **9,38 m** de profundidad. La parte inferior queda tapada por el ala de Gabriel, así que esa alternativa depende de un contacto con el piso que no se observa.
-
-El canto visible y su sucesión de alturas guían cinco huellas y contrahuellas. El modelo supone una arista a X constante y separa el frente del parapeto de su cara lateral. La sillería conserva el plano lateral medido. El nuevo bloque, el fondo retranqueado del balcón y los anclajes de las figuras se marcan como `assumed`. Las diez siluetas manuales se conservan.
-
-| Figura | Altura en el modelo | Referencia |
-| --- | --- | --- |
-| Niño | 1,21 m | Extremos de la silueta manual, incluido el gorro |
-| Hombre de la izquierda | 1,77 m | Tocado en `v ≈ 1274` |
-| Hombre del centro | 1,58 m | Tocado en `v ≈ 1330` |
-| Hombre de la derecha | 1,65 m | Tocado en `v ≈ 1310` |
-
-Las tres estaturas adultas se calculan con el mismo plano frontal y un apoyo supuesto a **3,10 m** de altura. La pintura oculta sus pies. Estas cifras dependen del nivel elegido para el balcón y no son mediciones independientes de la pintura.
-
-![Escalera y descanso vistos en perspectiva](docs/16_escalera_con_perspectiva.png)
 
 | | |
 | --- | --- |
@@ -332,8 +315,7 @@ RESENA.md                     reseña de una página (objetivo y relación con G
 | 11. Herramienta de medición | 2 | ✅ |
 | 12. Museo y ventana de Alberti | 3 | ✅ |
 | 13. Portal, límites de marcha y marca del ojo | — | ✅ |
-| 14. Escalera y balcón con profundidad documentada | — | ✅ |
-| 15. Recorrido con mediciones y controles para pantallas táctiles | — | ✅ |
+| 14. Recorrido con mediciones y controles para pantallas táctiles | — | ✅ |
 
 **Pendientes:** cerrar el cuarto de María con caras laterales, dar grosor a pilastras y cornisas, y explorar la sensibilidad de la reconstrucción a la altura de referencia y la distancia focal.
 
