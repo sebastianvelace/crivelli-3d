@@ -9,42 +9,133 @@
     <title>Crivelli 3D · Entrar en la Anunciación</title>
   </head>
   <body>
-    <div id="app"></div>
+    <main id="home">
+      <header class="home-header">
+        <span class="wordmark">Crivelli <span>3D</span></span>
+        <button class="text-button" type="button" data-credits>Sobre el proyecto</button>
+      </header>
+      <div class="home-grid">
+        <section class="home-intro" aria-labelledby="home-title">
+          <p class="eyebrow">Carlo Crivelli <span aria-hidden="true">·</span> 1486</p>
+          <h1 id="home-title">Entrar en<br><em>la pintura</em></h1>
+          <p class="home-description">Mira la Anunciación desde el punto de vista de Crivelli y cruza el marco para recorrer su calle en tres dimensiones.</p>
+          <div class="home-actions">
+            <button class="button primary" type="button" data-entry="museum">Entrar al museo <span aria-hidden="true">→</span></button>
+            <button class="button" type="button" data-entry="tour" aria-describedby="tour-duration">Recorrido guiado</button>
+          </div>
+          <p id="tour-duration" class="home-detail"></p>
+          <div id="loading" hidden>
+            <p id="load-message" role="status"></p>
+            <progress id="load-progress" max="100" aria-labelledby="load-message"></progress>
+          </div>
+        </section>
+        <figure class="home-plate">
+          <div class="home-picture">
+            <img id="home-painting" src="/painting/crivelli_ng739_2048.jpg" width="2048" height="2889" alt="La Anunciación con san Emigdio, de Carlo Crivelli" fetchpriority="high" />
+          </div>
+          <figcaption><cite>La Anunciación con san Emigdio</cite><span>National Gallery, Londres</span></figcaption>
+        </figure>
+      </div>
+    </main>
 
-    <!-- Marco y superposición de la pintura: solo visibles en el ojo de Crivelli -->
-    <div id="frame"></div>
-    <img id="overlay" alt="" />
+    <div id="experience" hidden>
+      <div id="app"></div>
+      <div id="frame" aria-hidden="true"></div>
+      <img id="overlay" alt="" />
+      <header class="visitor-header">
+        <div id="hud">
+          <button id="go-home" class="text-button" type="button"><span aria-hidden="true">←</span> Inicio</button>
+          <h2 id="viewer-title" tabindex="-1">La Anunciación con san Emigdio</h2>
+          <p id="hud-mode"></p>
+        </div>
+        <nav id="viewer-nav" aria-label="Vistas y herramientas">
+          <div class="control-group">
+            <button class="button" type="button" data-view="museum">Museo</button>
+            <button class="button" type="button" data-view="eye" aria-keyshortcuts="R">Ojo <kbd aria-hidden="true">R</kbd></button>
+            <button class="button" type="button" data-view="walk">Caminar</button>
+            <button class="button" type="button" data-view="model">Maqueta</button>
+          </div>
+          <div class="control-group">
+            <button class="button" type="button" data-tool="measure" aria-controls="measure-panel" aria-expanded="false">Medir</button>
+            <button class="button" type="button" data-tool="options" aria-controls="options-panel" aria-expanded="false">Opciones</button>
+          </div>
+        </nav>
+      </header>
 
-    <header id="hud">
-      <h1>La Anunciación con san Emigdio <span>Carlo Crivelli, 1486</span></h1>
-      <p id="hud-mode"></p>
-      <p id="hud-numbers"></p>
-    </header>
-    <div id="measures"></div>
-    <div id="reticle" aria-hidden="true" hidden></div>
-    <div id="visitor-notes">
-      <p id="hint"></p>
-      <p id="legend"></p>
-      <p id="caption"></p>
+      <aside id="viewer-tools" aria-labelledby="tools-title" hidden>
+        <header class="tools-header">
+          <h2 id="tools-title"></h2>
+          <button id="tools-close" class="text-button" type="button">Cerrar</button>
+        </header>
+        <section id="measure-panel" hidden>
+          <button id="measure-toggle" class="button primary" type="button" aria-pressed="false">Medición manual</button>
+          <p id="measure-guide" class="tool-note" hidden></p>
+          <label class="tool-field" for="measure-preset">Mediciones sugeridas</label>
+          <div class="measure-entry">
+            <select id="measure-preset"></select>
+            <button id="measure-add" class="button" type="button">Añadir</button>
+          </div>
+          <div class="tool-actions">
+            <button id="measure-all" class="text-button" type="button">Mostrar todas</button>
+            <button id="measure-clear" class="text-button" type="button">Borrar mediciones</button>
+          </div>
+        </section>
+        <section id="options-panel" hidden>
+          <label class="tool-field" for="fill-mode">Superficies ocultas</label>
+          <select id="fill-mode" data-setting="fillMode">
+            <option value="fiel">Fiel al cuadro</option>
+            <option value="neutro" selected>Neutro (yeso)</option>
+            <option value="inferido">Inferido</option>
+          </select>
+          <p id="legend" class="tool-note"></p>
+          <details>
+            <summary>Perspectiva y geometría</summary>
+            <p id="hud-numbers" class="tool-note"></p>
+            <label class="check-field"><input type="checkbox" data-setting="helpers" /> Líneas de fuga</label>
+            <label class="check-field"><input type="checkbox" data-setting="evidence" /> Aristas medidas y supuestas</label>
+            <label class="check-field"><input type="checkbox" data-setting="markInferred" /> Marcar lo inferido</label>
+            <label class="check-field"><input type="checkbox" data-setting="overlay" /> Superponer la pintura desde el ojo</label>
+            <label class="range-field">Opacidad de la pintura <input type="range" data-setting="overlayOpacity" min="0" max="1" step="0.01" value="0.5" /></label>
+            <label class="check-field"><input type="checkbox" data-setting="plan" /> Planta reconstruida</label>
+            <label class="range-field">Perspectiva aérea <input type="range" data-setting="fog" min="0" max="1" step="0.01" value="0" /></label>
+            <button class="text-button" type="button" data-view="orbit">Vista en órbita</button>
+          </details>
+          <div class="tool-actions">
+            <button id="start-tour" class="text-button" type="button">Iniciar recorrido</button>
+            <button id="download-capture" class="text-button" type="button">Guardar PNG</button>
+            <button class="text-button" type="button" data-credits>Créditos</button>
+          </div>
+        </section>
+      </aside>
+
+      <div id="measures"></div>
+      <div id="reticle" aria-hidden="true" hidden></div>
+      <div id="visitor-notes">
+        <p id="hint"></p>
+        <p id="caption" aria-live="polite"></p>
+      </div>
+      <nav id="touch-walk" aria-label="Movimiento" hidden>
+        <button class="button" type="button" data-key="KeyW" aria-label="Avanzar">↑</button>
+        <button class="button" type="button" data-key="KeyS" aria-label="Retroceder">↓</button>
+      </nav>
+      <nav id="tour-controls" aria-label="Controles del recorrido" hidden>
+        <span id="tour-progress" aria-live="polite"></span>
+        <button id="tour-pause" class="button" type="button">Pausar</button>
+        <button id="tour-next" class="button" type="button">Siguiente</button>
+        <button id="tour-stop" class="button" type="button">Detener</button>
+      </nav>
+
+      <aside id="plan" hidden>
+        <header class="tools-header">
+          <h2>Planta del piso</h2>
+          <button id="plan-close" class="text-button" type="button">Cerrar</button>
+        </header>
+        <img id="plan-img" alt="Planta del piso de la calle obtenida con una homografía" />
+      </aside>
     </div>
-    <nav id="touch-walk" aria-label="Movimiento" hidden>
-      <button type="button" data-key="KeyW" aria-label="Avanzar">↑</button>
-      <button type="button" data-key="KeyS" aria-label="Retroceder">↓</button>
-    </nav>
-    <nav id="tour-controls" aria-label="Controles del recorrido" hidden>
-      <span id="tour-progress" aria-live="polite"></span>
-      <button id="tour-pause" type="button">Pausar</button>
-      <button id="tour-next" type="button">Siguiente</button>
-      <button id="tour-stop" type="button">Detener</button>
-    </nav>
 
-    <aside id="plan">
-      <h2>Planta rectificada del piso</h2>
-      <img id="plan-img" alt="Planta del piso de la calle obtenida con una homografía" />
-    </aside>
-
-    <dialog id="credits">
-      <h2>Créditos y fuentes</h2>
+    <dialog id="credits" aria-labelledby="credits-title">
+      <h2 id="credits-title">Créditos y fuentes</h2>
       <p>
         Trabajo final de la electiva <em>Galileo</em> (Universidad Nacional de Colombia, Bogotá).
         Autor: <strong>Sebastian Velandia Acevedo</strong>.
@@ -62,14 +153,10 @@
         <li>E. Panofsky, <em>Galileo as a Critic of the Arts</em>, Martinus Nijhoff, 1954.</li>
         <li>L. B. Alberti, <em>De pictura</em>, 1435.</li>
       </ul>
-      <p>Hecho con three.js, lil-gui y Vite. Análisis geométrico en Python (NumPy y Pillow).</p>
-      <button id="credits-close">Cerrar</button>
+      <p>Hecho con three.js y Vite. Análisis geométrico en Python (NumPy y Pillow).</p>
+      <form method="dialog"><button class="button primary" type="submit">Cerrar</button></form>
     </dialog>
 
-    <div id="loading">
-      <label for="load-progress">Cargando la pintura…</label>
-      <progress id="load-progress" max="100"></progress>
-    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

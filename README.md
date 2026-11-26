@@ -2,7 +2,7 @@
 
 Reconstrucción 3D recorrible de *La Anunciación con san Emigdio* de Carlo Crivelli (1486, National Gallery, Londres, NG739) a partir de la geometría de su perspectiva.
 
-La página abre en una sala de museo, con el cuadro colgado a su tamaño real. En el piso hay una marca: el punto exacto donde estaba el ojo del pintor, calculado a partir de la pintura. El botón **«Volver al ojo de Crivelli»** lleva la cámara hasta ahí. Desde ese punto el cuadro se vuelve transparente y la imagen no cambia, porque detrás hay un espacio 3D que proyecta exactamente la pintura. Después se puede entrar a la calle, recorrerla, medirla y volver al ojo, donde el espacio vuelve a convertirse en la pintura.
+La portada permite entrar libremente al museo o iniciar el recorrido guiado. La sala muestra el cuadro colgado a su tamaño real. En el piso hay una marca: el punto exacto donde estaba el ojo del pintor, calculado a partir de la pintura. El botón **«Ojo»** lleva la cámara hasta ahí. Desde ese punto el cuadro se vuelve transparente y la imagen no cambia, porque detrás hay un espacio 3D que proyecta exactamente la pintura. Después se puede entrar a la calle, recorrerla, medirla y volver al ojo, donde el espacio vuelve a convertirse en la pintura.
 
 Demo: <https://crivelli-3d.vercel.app/>
 
@@ -26,16 +26,16 @@ npm run dev
 
 | Control | Acción |
 | --- | --- |
-| Panel → *Volver al ojo de Crivelli* (o tecla `R`) | Anima la cámara de regreso al punto de vista del pintor |
-| *Volver al museo* | Vuelve a la sala: el cuadro es otra vez un objeto colgado |
-| *Entrar y caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
-| *Avanzado → Modo órbita* | Girar, acercar y desplazar con el mouse |
-| *Modo maqueta* | Vista casi axonométrica de toda la reconstrucción |
-| *Avanzado → Lo que Crivelli no pintó* | Modo fiel, neutro (por defecto) o inferido; marcar lo inferido; aristas medido/supuesto |
+| *Ojo* (o tecla `R`) | Anima la cámara de regreso al punto de vista del pintor |
+| *Museo* | Vuelve a la sala: el cuadro es otra vez un objeto colgado |
+| *Caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
+| *Opciones → Perspectiva y geometría → Vista en órbita* | Girar, acercar y desplazar con el mouse |
+| *Maqueta* | Vista casi axonométrica de toda la reconstrucción |
+| *Opciones → Superficies ocultas* | Modo fiel, neutro (por defecto) o inferido |
 | *Medir* | Selecciona dos puntos para obtener una distancia en metros. Al caminar, apunta con la mira y selecciona cada punto con un clic. También hay mediciones sugeridas. |
-| *Avanzado → Comprobar la geometría* | Superponer la pintura (con opacidad), líneas y punto de fuga en 3D, planta reconstruida |
+| *Opciones → Perspectiva y geometría* | Superponer la pintura, marcar lo inferido, ver aristas medidas y supuestas, líneas de fuga y planta reconstruida |
 | *Recorrido guiado* | 11 paradas en 73 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
-| *Avanzado → Extras* | Perspectiva aérea según Leonardo y captura PNG |
+| *Opciones* | Perspectiva aérea dentro de «Perspectiva y geometría», captura PNG y créditos |
 
 ### Publicar gratis
 
@@ -66,7 +66,7 @@ Lee `scene.json` y `calibration.json`, y hornea `public/textures/*.jpg`, `public
 
 ## Tres modos: lo pintado y lo inferido
 
-Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la pintura. La diferencia aparece al entrar y mirar lo que el pintor no mostró. El panel *Lo que Crivelli no pintó* tiene tres opciones:
+Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la pintura. La diferencia aparece al entrar y mirar lo que el pintor no mostró. El selector *Superficies ocultas* ofrece tres opciones:
 
 | Modo | Qué se ve donde no hay pintura |
 | --- | --- |
@@ -308,7 +308,7 @@ src/
   app/tour.js                 recorrido guiado
   app/measure.js              herramienta de medición y mediciones sugeridas
   scene/museum.js             sala de museo con el cuadro como ventana de Alberti
-  main.js, style.css          panel lil-gui y superposiciones HTML
+  main.js, style.css, viewer.css   portada, controles del visor y superposiciones HTML
 docs/                         capturas para la presentación
 RESENA.md                     reseña de una página (objetivo y relación con Galileo)
 ```
