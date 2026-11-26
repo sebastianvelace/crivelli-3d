@@ -46,6 +46,7 @@ export function createProjectiveMaterial(shared, perElement) {
       uniform float uNear;
       uniform float uFar;
       uniform float uMode;          // 0 fiel, 1 neutro, 2 inferido
+      uniform bool uAtPainterEye;
       uniform float uMarkInferred;  // 1 = rayado rosa sobre todo lo no pintado
       uniform vec3 uNeutral;        // color "yeso"
       uniform vec3 uFogColor;       // perspectiva aérea (Leonardo): azul de lo lejano
@@ -68,7 +69,11 @@ export function createProjectiveMaterial(shared, perElement) {
         bool inFrame = vPainterClip.w > 0.0 && all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)));
 
         bool seen = false;
-        if (inFrame && gl_FrontFacing) {
+        if (inFrame && uAtPainterEye) {
+          // El render actual ya resuelve la primera superficie del mismo rayo.
+          // Evita falsos ocultamientos por el muestreo discreto del mapa.
+          seen = true;
+        } else if (inFrame && gl_FrontFacing) {
           // En perspectiva, w del clip = distancia del fragmento al ojo a lo largo de -Z.
           float firstHit = linearDepth(texture2D(uDepth, uv).r);
           seen = vPainterClip.w <= firstHit * 1.004 + 0.03;
@@ -119,6 +124,7 @@ export function createSharedUniforms(paintingTexture, depthTexture, near, far) {
     uNear: { value: near },
     uFar: { value: far },
     uMode: { value: FILL_MODES.neutro },
+    uAtPainterEye: { value: false },
     uMarkInferred: { value: 0 },
     uNeutral: { value: new THREE.Color('#c9bba2') },
     uFogColor: { value: new THREE.Color('#9fb6cf') },

@@ -396,6 +396,7 @@ export class Viewer {
     this.uniforms.uFogAmount.value = (this.fogStrength ?? 0) * (1 - this.camera.painterness);
     // Las aristas de evidencia se desvanecen al llegar al ojo: ahí manda la pintura.
     const k = this.eyeFactor();
+    this.uniforms.uAtPainterEye.value = k > 1 - 1e-6;
     for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
     this.renderer.render(this.scene, this.camera);
     this.onFrame?.(this);
