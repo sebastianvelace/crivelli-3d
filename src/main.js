@@ -87,7 +87,10 @@ function setupOverlays(viewer, calib) {
     legend.innerHTML = LEGEND[viewer.fillMode] ?? '';
     // En el museo y en el ojo todo es pintura: la leyenda de los modos no aplica.
     legend.style.display = viewer.mode === 'museum' || viewer.mode === 'eye' ? 'none' : '';
-    const [title, text] = MODE_TEXT[viewer.mode] ?? ['', ''];
+    const [title, defaultHint] = MODE_TEXT[viewer.mode] ?? ['', ''];
+    const text = viewer.walkBlocked
+      ? 'Parate en la marca amarilla (o usá «Volver al ojo») para que el cuadro se abra'
+      : defaultHint;
     hud.textContent = title;
     hint.textContent = text;
     hint.style.opacity = text ? 1 : 0;

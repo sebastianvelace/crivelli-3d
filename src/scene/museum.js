@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 /** Capa propia del museo: la cámara del pintor no la ve (no entra en la proyección). */
 export const MUSEUM_LAYER = 2;
+export const ROOM = { x0: -5, x1: 5, z1: 7.5, h: 4.6 };
 
 /**
  * Sala de museo con el panel colgado a su tamaño real.
@@ -30,7 +31,6 @@ export function createMuseum(space, calib, paintingTexture) {
   const cyp = (tl.y + br.y) / 2;
   const z = -d;
 
-  const ROOM = { x0: -5, x1: 5, z1: 7.5, h: 4.6 };
   // FrontSide con las normales hacia adentro: desde afuera (vista de maqueta) las paredes no tapan nada.
   const wallMat = new THREE.MeshStandardMaterial({ color: '#4a2a2a', roughness: 0.95 });
   const floorMat = new THREE.MeshStandardMaterial({ color: '#5b4330', roughness: 0.8 });
@@ -99,6 +99,19 @@ export function createMuseum(space, calib, paintingTexture) {
   panel.position.set(cxp, cyp, z);
   group.add(panel);
 
+  const portal = new THREE.Mesh(panel.geometry, new THREE.MeshBasicMaterial({
+    colorWrite: false,
+    depthWrite: false,
+    depthTest: false,
+    stencilWrite: true,
+    stencilRef: 1,
+    stencilZPass: THREE.ReplaceStencilOp,
+  }));
+  portal.position.copy(panel.position);
+  portal.renderOrder = -3;
+  portal.visible = false;
+  group.add(portal);
+
   // Cartela junto al cuadro
   const plaque = textPlane(
     ['Carlo Crivelli (c. 1430–1495)', 'La Anunciación con san Emigdio, 1486', '207 × 146,5 cm · National Gallery, Londres'],
@@ -143,8 +156,10 @@ export function createMuseum(space, calib, paintingTexture) {
   return {
     group,
     panel,
+    portal,
     marker,
     windowDistance: d,
+    aperture: { x0: tl.x, x1: br.x, y0: br.y, y1: tl.y, z },
     /** Pose inicial: de pie en la sala, algo al costado, mirando el cuadro. */
     startPose: { position: new THREE.Vector3(1.5, 1.62, 4.6), target: new THREE.Vector3(cxp, cyp - 0.15, z) },
     setPanelOpacity(v) {

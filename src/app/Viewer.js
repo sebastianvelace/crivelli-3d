@@ -5,7 +5,8 @@ import { PictureSpace, resolvePlanes, buildElementGeometry } from '../core/pictu
 import { createProjectiveMaterial, createSharedUniforms, FILL_MODES } from '../core/projectiveMaterial.js';
 import { createPainterCamera, VisitorCamera } from '../core/cameras.js';
 import { createPerspectiveHelpers, createEyeMarker, HELPER_LAYER } from '../scene/perspectiveHelpers.js';
-import { createMuseum, MUSEUM_LAYER } from '../scene/museum.js';
+import { createMuseum, MUSEUM_LAYER, ROOM } from '../scene/museum.js';
+import { constrainWalk } from './walkBounds.js';
 
 const PAINTER_NEAR = 0.3;
 const PAINTER_FAR = 200;
@@ -25,13 +26,14 @@ export class Viewer {
     this.calib = calibration;
     this.space = new PictureSpace(calibration);
     this.mode = 'museum';
+    this.exteriorTransition = false;
     this.windowOpen = false; // ¿el cuadro ya se volvió ventana?
     this.listeners = new Set();
     this.animation = null;
     this.keys = new Set();
 
     // Renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, stencil: true });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
@@ -63,6 +65,7 @@ export class Viewer {
     this.buildHelpers(paintingTexture);
     this.museum = createMuseum(this.space, calibration, paintingTexture);
     this.scene.add(this.museum.group);
+    this.buildThreshold();
     this.panelOpacity = 1;
     this.renderDepth();
 
@@ -150,6 +153,27 @@ export class Viewer {
     ground.renderOrder = -1;
     ground.layers.set(HELPER_LAYER);
     this.scene.add(ground);
+    this.ground = ground;
+  }
+
+  buildThreshold() {
+    const { x0, x1, z } = this.museum.aperture;
+    const bounds = this.elementMeshes.get('piso_calle').geometry;
+    bounds.computeBoundingBox();
+    const floorStart = bounds.boundingBox.max.z;
+    const threshold = new THREE.Mesh(
+      new THREE.PlaneGeometry(x1 - x0, z - floorStart),
+      new THREE.MeshBasicMaterial({ color: '#827767', depthWrite: false }),
+    );
+    threshold.name = 'umbral_supuesto';
+    threshold.userData.evidence = 'assumed';
+    threshold.userData.note = 'Piso de yeso entre el marco y el comienzo del piso pintado.';
+    threshold.rotation.x = -Math.PI / 2;
+    threshold.position.set((x0 + x1) / 2, 0, (z + floorStart) / 2);
+    threshold.renderOrder = -1;
+    threshold.layers.set(HELPER_LAYER);
+    this.scene.add(threshold);
+    this.threshold = threshold;
   }
 
   buildHelpers(paintingTexture) {
@@ -163,12 +187,14 @@ export class Viewer {
   /** Render de profundidad desde el ojo del pintor (una sola vez: la cámara no se mueve). */
   renderDepth() {
     // La cámara del pintor solo ve la capa 0 (la escena), no las ayudas.
-    this.scene.overrideMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false });
+    const material = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false });
+    this.scene.overrideMaterial = material;
     this.renderer.setRenderTarget(this.depthTarget);
     this.renderer.clear();
     this.renderer.render(this.scene, this.painterCamera);
     this.renderer.setRenderTarget(null);
     this.scene.overrideMaterial = null;
+    material.dispose();
   }
 
   // ---------------------------------------------------------------- modos
@@ -183,6 +209,8 @@ export class Viewer {
 
   setMode(mode) {
     this.mode = mode;
+    this.exteriorTransition = false;
+    this.walkBlocked = false;
     this.orbit.enabled = mode === 'orbit' || mode === 'model';
     if (mode !== 'walk' && this.pointerLock.isLocked) this.pointerLock.unlock();
     this.eyeMarker.visible = mode === 'model' || this.helpers.visible;
@@ -222,16 +250,19 @@ export class Viewer {
       () => {
         this.setMode('eye');
         // Desde aquí el cuadro puede volverse transparente sin que la imagen cambie.
-        if (!this.windowOpen) {
-          this.windowOpen = true;
-          this.onWindowOpened?.();
-        }
+        this.openWindow();
       },
     );
   }
 
+  openWindow() {
+    if (this.windowOpen) return;
+    this.windowOpen = true;
+    this.onWindowOpened?.();
+  }
+
   /** Volver a la sala: el cuadro vuelve a ser un objeto colgado en la pared. */
-  enterMuseum() {
+  enterMuseum(onDone) {
     this.stopTour?.();
     const { position, target } = this.museum.startPose;
     this.setMode('transition');
@@ -240,14 +271,19 @@ export class Viewer {
       () => {
         this.windowOpen = false;
         this.setMode('museum');
+        onDone?.();
       },
     );
   }
 
   enterWalk() {
     // Desde la sala se camina en el lugar (hasta la marca del ojo, por ejemplo).
-    if (this.mode === 'museum') {
+    if (this.mode === 'museum' || this.mode === 'walk') {
       this.setMode('walk');
+      return;
+    }
+    if (!this.windowOpen) {
+      this.enterMuseum(() => this.setMode('walk'));
       return;
     }
     const target = this.space.eye.clone().add(new THREE.Vector3(0, 0, -1.6));
@@ -262,6 +298,7 @@ export class Viewer {
     const target = new THREE.Vector3(-0.1, 1.3, -6);
     const pos = new THREE.Vector3(-3.4, 3.4, 1.8);
     this.setMode('transition');
+    this.exteriorTransition = true;
     this.animateTo(
       { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov: 60, duration: 2.2 },
       () => {
@@ -277,6 +314,7 @@ export class Viewer {
     const dir = new THREE.Vector3(-0.55, 0.75, 1).normalize();
     const pos = target.clone().addScaledVector(dir, 120);
     this.setMode('transition');
+    this.exteriorTransition = true;
     this.eyeMarker.visible = true;
     this.animateTo(
       { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov: 11, duration: 2.6 },
@@ -348,15 +386,11 @@ export class Viewer {
       this.orbit.update();
     }
 
-    // El panel del museo: opaco mientras es un cuadro; transparente cuando es ventana
-    // (o cuando alguien lo atraviesa caminando).
-    const crossing = this.camera.position.z < -this.museum.windowDistance + 0.25;
-    const target = this.windowOpen || crossing ? 0 : 1;
+    const target = this.windowOpen ? 0 : 1;
     this.panelOpacity += (target - this.panelOpacity) * Math.min(1, dt * 1.6);
     if (Math.abs(target - this.panelOpacity) < 0.002) this.panelOpacity = target;
     this.museum.setPanelOpacity(this.panelOpacity);
-    // En órbita y maqueta la sala taparía la calle: se oculta.
-    this.museum.group.visible = this.mode !== 'orbit' && this.mode !== 'model';
+    this.updatePortal();
 
     // Perspectiva aérea: solo fuera del ojo (en el ojo manda la pintura).
     this.uniforms.uFogAmount.value = (this.fogStrength ?? 0) * (1 - this.camera.painterness);
@@ -365,6 +399,29 @@ export class Viewer {
     for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
     this.renderer.render(this.scene, this.camera);
     this.onFrame?.(this);
+  }
+
+  updatePortal() {
+    const { x, y, z } = this.camera.position;
+    const onMuseumSide = z >= this.museum.aperture.z;
+    const outsideRoom = onMuseumSide && (x < ROOM.x0 || x > ROOM.x1 || y < 0 || y > ROOM.h || z > ROOM.z1);
+    const exterior = this.mode === 'orbit' || this.mode === 'model' ||
+      (this.mode === 'transition' && this.exteriorTransition) || (this.mode === 'tour' && this.tourExterior);
+    this.museum.group.visible = !outsideRoom && !exterior;
+    const usePortal = onMuseumSide && this.museum.group.visible;
+    this.museum.portal.visible = usePortal;
+    this.ground.visible = !usePortal;
+    this.threshold.visible = !onMuseumSide && this.museum.group.visible;
+    if (this.portalActive === usePortal) return;
+    this.portalActive = usePortal;
+    const materials = [...this.pictureGroup.children.map((mesh) => mesh.material),
+      ...this.edgeMaterials.map(([material]) => material)];
+    for (const material of materials) {
+      material.stencilWrite = usePortal;
+      material.stencilWriteMask = 0;
+      material.stencilRef = 1;
+      material.stencilFunc = THREE.EqualStencilFunc;
+    }
   }
 
   walk(dt) {
@@ -379,9 +436,17 @@ export class Viewer {
     if (this.keys.has('KeyS') || this.keys.has('ArrowDown')) move.sub(forward);
     if (this.keys.has('KeyD') || this.keys.has('ArrowRight')) move.add(right);
     if (this.keys.has('KeyA') || this.keys.has('ArrowLeft')) move.sub(right);
-    if (move.lengthSq() > 0) this.camera.position.addScaledVector(move.normalize(), speed);
-    if (this.keys.has('KeyE')) this.camera.position.y += speed;
-    if (this.keys.has('KeyQ')) this.camera.position.y = Math.max(0.3, this.camera.position.y - speed);
+    move.normalize().multiplyScalar(speed);
+    if (this.keys.has('KeyE')) move.y += speed;
+    if (this.keys.has('KeyQ')) move.y -= speed;
+    const blocked = constrainWalk(this.camera.position, move, this.museum.aperture, this.windowOpen);
+    if (this.walkBlocked !== blocked) {
+      this.walkBlocked = blocked;
+      this.emit();
+    }
+    if (!this.windowOpen && this.camera.position.distanceTo(this.space.eye) < 0.22) {
+      this.returnToEye(0.75);
+    }
   }
 
   /** Captura PNG del canvas (para docs/). */
