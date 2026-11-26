@@ -247,9 +247,28 @@ Desde la posición exacta del ojo el propio render resuelve qué superficie se v
 
 ---
 
+## Consistencia de la perspectiva
+
+Las 33 ortogonales originales calibran el visor. Se marcaron 11 segmentos adicionales en la mitad derecha, cinco en la logia y seis en el cuarto. Se ajustó con la misma SVD un punto de fuga global sobre las 44 marcas y uno por zona. Los errores se calculan respecto del punto ajustado de cada fila.
+
+| Zona | Rectas | Punto de fuga (px) | Error angular medio | Error máximo (px) |
+| --- | ---: | --- | ---: | ---: |
+| Global ampliado | 44 | (791,66; 2272,64) | 0,715° | 85,00 |
+| Calle izquierda | 9 | (801,15; 2311,56) | 0,071° | 4,59 |
+| Fachada de María | 20 | (778,03; 2307,87) | 0,242° | 12,07 |
+| Logia | 5 | (774,18; 2264,16) | 0,149° | 11,12 |
+| Cuarto de María | 6 | (811,91; 2263,97) | 0,525° | 29,40 |
+| Piso | 4 | (793,98; 2121,02) | 0,657° | 36,23 |
+
+La calle izquierda y la fachada convergen localmente cerca de la misma altura en la imagen, entre 2308 y 2312 px. La logia y el cuarto convergen cerca de 2264 px, y las cuatro juntas del piso dan 2121 px, con más dispersión. El modelo de un punto es una aproximación útil. El piso y las zonas con pocas marcas requieren más cautela. Cada elipse de la figura muestra la sensibilidad al retirar una recta del ajuste de su zona.
+
+Las cuatro diagonales dan una focal de **2266,45 ± 71,16 px** (media y desviación estándar muestral). Ese margen da **107,3–114,3 cm** de distancia de observación. La altura de **1,513 m** calculada a partir de las figuras queda fija al variar solo la focal, porque esta se cancela en la razón de alturas.
+
+![Ortogonal y ajustes por zonas](docs/16_consistencia_por_zonas.png)
+
 ## Supuestos y decisiones
 
-1. **Un único punto de fuga.** Las líneas de la calle y de la fachada izquierda de la casa de María fugan a un mismo punto; la mitad derecha se analiza en la sección de consistencia.
+1. **Un único punto de fuga para el visor.** La calle y la fachada tienen fugas cercanas. La logia, el cuarto y el piso se apartan del ajuste de referencia en los valores indicados en la sección de consistencia.
 2. **Baldosas cuadradas** para calcular la distancia del ojo.
 3. **Alturas de las figuras:** el fraile del fondo mide 1,65 m (con gorro) y Gabriel arrodillado, 1,20 m. Fijan la escala.
 4. **Escalones:** se modelan como un solo plano frontal (la contrahuella) más una plataforma horizontal. La altura que resulta, ≈ 0,6 m para tres escalones, es razonable.

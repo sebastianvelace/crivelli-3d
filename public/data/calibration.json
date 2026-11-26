@@ -64,5 +64,136 @@
   "fovVerticalDeg": 85.81,
   "fovHorizontalDeg": 63.46,
   "viewingDistanceCm": 110.8,
-  "panelWidthCm": 146.5
+  "panelWidthCm": 146.5,
+  "focalPxStd": 71.16,
+  "viewingDistanceCmRange": [
+    107.3,
+    114.3
+  ],
+  "eyeHeightFocalRangeM": [
+    1.513,
+    1.513
+  ],
+  "globalPerspective": {
+    "lines": 44,
+    "vanishingPoint": [
+      791.66,
+      2272.64
+    ],
+    "meanAngleDeg": 0.715,
+    "maxErrorPx": 85.0,
+    "meanAngleAgainstCalibrationDeg": 0.495,
+    "leaveOneOutCovariancePx2": [
+      [
+        0.529,
+        -0.32
+      ],
+      [
+        -0.32,
+        0.822
+      ]
+    ]
+  },
+  "zones": {
+    "calle_izquierda": {
+      "lines": 9,
+      "vanishingPoint": [
+        801.15,
+        2311.56
+      ],
+      "meanAngleDeg": 0.071,
+      "maxErrorPx": 4.59,
+      "meanAngleAgainstCalibrationDeg": 0.128,
+      "leaveOneOutCovariancePx2": [
+        [
+          2.105,
+          5.107
+        ],
+        [
+          5.107,
+          13.096
+        ]
+      ]
+    },
+    "fachada_maria": {
+      "lines": 20,
+      "vanishingPoint": [
+        778.03,
+        2307.87
+      ],
+      "meanAngleDeg": 0.242,
+      "maxErrorPx": 12.07,
+      "meanAngleAgainstCalibrationDeg": 0.343,
+      "leaveOneOutCovariancePx2": [
+        [
+          5.037,
+          -7.019
+        ],
+        [
+          -7.019,
+          9.922
+        ]
+      ]
+    },
+    "logia": {
+      "lines": 5,
+      "vanishingPoint": [
+        774.18,
+        2264.16
+      ],
+      "meanAngleDeg": 0.149,
+      "maxErrorPx": 11.12,
+      "meanAngleAgainstCalibrationDeg": 0.599,
+      "leaveOneOutCovariancePx2": [
+        [
+          3284.646,
+          -3580.493
+        ],
+        [
+          -3580.493,
+          3923.711
+        ]
+      ]
+    },
+    "cuarto_maria": {
+      "lines": 6,
+      "vanishingPoint": [
+        811.91,
+        2263.97
+      ],
+      "meanAngleDeg": 0.525,
+      "maxErrorPx": 29.4,
+      "meanAngleAgainstCalibrationDeg": 0.722,
+      "leaveOneOutCovariancePx2": [
+        [
+          58.998,
+          1.617
+        ],
+        [
+          1.617,
+          25.544
+        ]
+      ]
+    },
+    "piso": {
+      "lines": 4,
+      "vanishingPoint": [
+        793.98,
+        2121.02
+      ],
+      "meanAngleDeg": 0.657,
+      "maxErrorPx": 36.23,
+      "meanAngleAgainstCalibrationDeg": 1.613,
+      "leaveOneOutCovariancePx2": [
+        [
+          214.127,
+          525.865
+        ],
+        [
+          525.865,
+          2504.738
+        ]
+      ]
+    }
+  }
 }

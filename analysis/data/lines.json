@@ -202,6 +202,72 @@
    3203,
    1486,
    3791
+  ],
+  [
+   1814,
+   437,
+   1931,
+   230
+  ],
+  [
+   2340,
+   321,
+   2414,
+   230
+  ],
+  [
+   2398,
+   460,
+   2601,
+   235
+  ],
+  [
+   2327,
+   584,
+   2564,
+   328
+  ],
+  [
+   2523,
+   589,
+   2640,
+   476
+  ],
+  [
+   1941,
+   1773,
+   2019,
+   1739
+  ],
+  [
+   1859,
+   1918,
+   2118,
+   1830
+  ],
+  [
+   1967,
+   1866,
+   2096,
+   1825
+  ],
+  [
+   2208,
+   1783,
+   2341,
+   1735
+  ],
+  [
+   1841,
+   3583,
+   1901,
+   3659
+  ],
+  [
+   2589,
+   3769,
+   2699,
+   3863
   ]
  ],
  "diagonals": [
@@ -326,5 +392,52 @@
    ],
    "height_m": 1.2
   }
- ]
+ ],
+ "orthogonalZones": [
+  "calle_izquierda",
+  "calle_izquierda",
+  "calle_izquierda",
+  "calle_izquierda",
+  "fachada_maria",
+  "calle_izquierda",
+  "calle_izquierda",
+  "fachada_maria",
+  "calle_izquierda",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "calle_izquierda",
+  "calle_izquierda",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "fachada_maria",
+  "piso",
+  "piso",
+  "piso",
+  "piso",
+  "fachada_maria",
+  "logia",
+  "logia",
+  "logia",
+  "logia",
+  "logia",
+  "cuarto_maria",
+  "cuarto_maria",
+  "cuarto_maria",
+  "cuarto_maria",
+  "cuarto_maria",
+  "cuarto_maria"
+ ],
+ "calibrationOrthogonalCount": 33
 }

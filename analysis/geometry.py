@@ -37,6 +37,13 @@ LINES = ROOT / "analysis" / "data" / "lines.json"
 # Dimensiones físicas según la ficha de Wikimedia Commons de la reproducción
 # usada (207 x 146,5 cm). Solo se usan para traducir f (px) a una distancia real en cm.
 PANEL_WIDTH_CM = 146.5
+ZONE_COLORS = {
+    'calle_izquierda': '#53dcaf',
+    'fachada_maria': '#ffe05b',
+    'logia': '#fb927a',
+    'cuarto_maria': '#b6b0ff',
+    'piso': '#64c7ff',
+}
 
 
 # ---------------------------------------------------------------------------
@@ -84,18 +91,39 @@ def vanishing_point(segments):
     v = np.linalg.inv(T) @ Vt[-1]
     v = v / v[2]
 
+    vp = v[:2]
+    return vp, *vanishing_errors(segments, vp)
+
+
+def vanishing_errors(segments, vp):
     # Residuo: distancia perpendicular (px) del punto de fuga a cada recta,
     # y ángulo entre cada segmento y la dirección hacia el punto de fuga.
     dists, angles = [], []
     for seg in segments:
         l = homogeneous_line(seg)
-        dists.append(abs(l @ v))
+        dists.append(abs(l @ [*vp, 1]))
         mid = np.array([(seg[0] + seg[2]) / 2, (seg[1] + seg[3]) / 2])
         d_seg = np.array([seg[2] - seg[0], seg[3] - seg[1]])
-        d_vp = v[:2] - mid
+        d_vp = vp - mid
         cosang = abs(d_seg @ d_vp) / (np.linalg.norm(d_seg) * np.linalg.norm(d_vp))
         angles.append(math.degrees(math.acos(min(1.0, cosang))))
-    return v[:2], np.array(dists), np.array(angles)
+    return np.array(dists), np.array(angles)
+
+
+def summarize_vanishing(segments, reference):
+    point, distances, angles = vanishing_point(segments)
+    _, reference_angles = vanishing_errors(segments, reference)
+    trials = [vanishing_point(segments[:i] + segments[i + 1:])[0] for i in range(len(segments))] if len(segments) >= 3 else []
+    finite = [p for p in trials if np.all(np.isfinite(p))]
+    covariance = np.cov(np.array(finite).T) if len(finite) >= 2 else None
+    return {
+        'lines': len(segments),
+        'vanishingPoint': point.round(2).tolist(),
+        'meanAngleDeg': round(float(angles.mean()), 3),
+        'maxErrorPx': round(float(distances.max()), 2),
+        'meanAngleAgainstCalibrationDeg': round(float(reference_angles.mean()), 3),
+        'leaveOneOutCovariancePx2': covariance.round(3).tolist() if covariance is not None else None,
+    }
 
 
 def dlt_homography(src, dst):
@@ -135,7 +163,9 @@ def main():
     img_path = ROOT / data["image"]["file"]
 
     # 1) Punto de fuga central ------------------------------------------------
-    vp, dists, angles = vanishing_point(data["orthogonals"])
+    segments = data['orthogonals']
+    baseline_count = data.get('calibrationOrthogonalCount', len(segments))
+    vp, dists, angles = vanishing_point(segments[:baseline_count])
     cx, cy = vp
     rms = float(np.sqrt(np.mean(dists ** 2)))
 
@@ -211,7 +241,7 @@ def main():
         "perspectiveErrorRmsPx": round(rms, 2),
         "perspectiveErrorMaxPx": round(float(dists.max()), 2),
         "perspectiveErrorMeanDeg": round(float(angles.mean()), 3),
-        "linesUsed": len(data["orthogonals"]),
+        "linesUsed": baseline_count,
         "tileSizeM": round(tile_m, 3),
         "floorFrontDepthM": round(D0, 3),
         "homographyFloor": H_analytic.round(4).tolist(),
@@ -222,6 +252,23 @@ def main():
         "viewingDistanceCm": round(f * px_cm, 1),
         "panelWidthCm": PANEL_WIDTH_CM,
     }
+    focal_std = float(np.std(fs, ddof=1)) if len(fs) >= 2 else 0.0
+    calib['focalPxStd'] = round(focal_std, 2)
+    calib['viewingDistanceCmRange'] = [round((f - focal_std) * px_cm, 1), round((f + focal_std) * px_cm, 1)]
+    # La razón pie–horizonte / pie–cabeza cancela f para esta estimación.
+    calib['eyeHeightFocalRangeM'] = [calib['eyeHeightM']] * 2
+    if 'orthogonalZones' in data:
+        by_zone = {key: [] for key in ZONE_COLORS}
+        for segment, zone in zip(segments, data['orthogonalZones'], strict=True):
+            if zone in by_zone:
+                by_zone[zone].append(segment)
+        calib['globalPerspective'] = summarize_vanishing(segments, vp)
+        calib['zones'] = {
+            zone: summarize_vanishing(selected, vp)
+            if len(selected) >= 2 else {'lines': len(selected)}
+            for zone, selected in by_zone.items()
+        }
+        draw_zone_figure(img_path, data, calib)
     out = ROOT / "public" / "data" / "calibration.json"
     out.write_text(json.dumps(calib, indent=2, ensure_ascii=False), encoding="utf-8")
 
@@ -257,7 +304,7 @@ def draw_lines_figure(img_path, data, calib):
     dr = ImageDraw.Draw(im, "RGBA")
     cx, cy = calib["vanishingPoint"]
     dr.line([0, cy, W, cy], fill=(255, 220, 0, 230), width=6)
-    for s in data["orthogonals"]:
+    for s in data["orthogonals"][:calib['linesUsed']]:
         far = s[:2] if math.dist(s[:2], (cx, cy)) > math.dist(s[2:], (cx, cy)) else s[2:]
         dr.line([far[0], far[1], cx, cy], fill=(230, 30, 30, 170), width=4)
         dr.line(s, fill=(20, 230, 60, 255), width=10)
@@ -278,6 +325,57 @@ def draw_lines_figure(img_path, data, calib):
     del pad
 
 
+def draw_zone_figure(img_path, data, calib):
+    photo = Image.open(img_path).convert('RGB')
+    scale = 1500 / photo.width
+    photo = photo.resize((1500, round(photo.height * scale)), Image.Resampling.LANCZOS)
+    top = 136
+    canvas = Image.new('RGB', (photo.width, photo.height + top), '#201a16')
+    canvas.paste(photo, (0, top))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((28, 18), 'Consistencia de la perspectiva por zonas', font=font(35), fill='#faf3ea')
+    draw.text((28, 62), 'Elipse descriptiva de sensibilidad al excluir una recta · Cruz blanca: fuga de la calibración',
+              font=font(19), fill='#e2d8c9')
+    for i, (zone, color) in enumerate(ZONE_COLORS.items()):
+        x = 28 + i * 296
+        draw.line((x, 108, x + 21, 108), fill=color, width=5)
+        draw.text((x + 30, 108), zone.replace('_', ' '), fill='#faf3ea', font=font(22), anchor='lm')
+
+    def project(x, y):
+        return x * scale, y * scale + top
+
+    marks = []
+    for segment, zone in zip(data['orthogonals'], data['orthogonalZones'], strict=True):
+        if zone not in ZONE_COLORS:
+            continue
+        x, y, u, v = segment
+        path = (*project(x, y), *project(u, v))
+        draw.line(path, fill='#1a1411', width=7)
+        draw.line(path, fill=ZONE_COLORS[zone], width=4)
+
+    for zone, color in ZONE_COLORS.items():
+        stats = calib['zones'][zone]
+        if 'vanishingPoint' not in stats:
+            continue
+        center = np.asarray(stats['vanishingPoint'])
+        cov = stats['leaveOneOutCovariancePx2']
+        if cov is not None:
+            values, axes = np.linalg.eigh(cov)
+            theta = np.linspace(0, 2 * np.pi, 81)
+            circle = np.vstack([np.cos(theta), np.sin(theta)])
+            points = center[:, None] + axes @ (np.sqrt(5.991 * np.maximum(values, 0))[:, None] * circle)
+            draw.line([project(x, y) for x, y in points.T], fill=color, width=3)
+        marks.append((project(*center), color))
+    for (x, y), color in marks:
+        draw.ellipse((x - 7, y - 7, x + 7, y + 7), fill=color, outline='#1a1411', width=2)
+    x, y = project(*calib['vanishingPoint'])
+    for stroke in ('#1a1411', '#fff7eb'):
+        width = 5 if stroke == '#1a1411' else 2
+        draw.line((x - 12, y, x + 12, y), fill=stroke, width=width)
+        draw.line((x, y - 12, x, y + 12), fill=stroke, width=width)
+    canvas.save(ROOT / 'docs/16_consistencia_por_zonas.png')
+
+
 def write_report(c):
     lines = [
         "# Reporte del análisis geométrico",
@@ -285,7 +383,8 @@ def write_report(c):
         f"- Punto de fuga central: ({c['vanishingPoint'][0]:.1f}, {c['vanishingPoint'][1]:.1f}) px",
         f"- Error de perspectiva: RMS {c['perspectiveErrorRmsPx']} px, máximo {c['perspectiveErrorMaxPx']} px, "
         f"ángulo medio {c['perspectiveErrorMeanDeg']}° ({c['linesUsed']} rectas)",
-        f"- Distancia del ojo f = {c['focalPx']} px (muestras: {c['focalPxSamples']})",
+        f"- Distancia del ojo f = {c['focalPx']} ± {c['focalPxStd']} px (media ± desviación estándar muestral de "
+        f"{len(c['focalPxSamples'])} diagonales: {c['focalPxSamples']})",
         f"- Puntos de distancia: {c['distancePoints']}",
         f"- Distancia de observación en el museo ≈ {c['viewingDistanceCm']} cm (panel de {c['panelWidthCm']} cm)",
         f"- Altura del ojo ≈ {c['eyeHeightM']} m (muestras: {c['eyeHeightSamples']})",
@@ -293,7 +392,25 @@ def write_report(c):
         f"- Baldosa ≈ {c['tileSizeM']} m; borde frontal del piso a {c['floorFrontDepthM']} m del ojo",
         f"- Homografía DLT: reproyección RMS {c['homographyDltReprojRmsPx']} px; "
         f"diferencia con la analítica {c['homographyAgreementRmsPx']} px",
+        f"- Distancia de observación para f ± una desviación: {c['viewingDistanceCmRange']} cm.",
+        f"- Rango de altura del ojo al variar solo f: {c['eyeHeightFocalRangeM']} m; la razón de alturas cancela f.",
     ]
+    if 'zones' in c:
+        lines.extend([
+            '', '## Consistencia de la perspectiva', '',
+            'Las 33 rectas de referencia calibran el visor. El ajuste global ampliado incluye las nuevas marcas '
+            'de la derecha. La elipse muestra la sensibilidad al omitir una recta, no una región de confianza.', '',
+            '| Zona | Rectas | Fuga local (px) | Error angular medio (°) | Error máximo (px) | Ángulo medio frente a la calibración (°) |',
+            '| --- | ---: | --- | ---: | ---: | ---: |',
+        ])
+        for zone, row in [('global_ampliado', c['globalPerspective']), *c['zones'].items()]:
+            name = zone.replace('_', ' ')
+            if 'vanishingPoint' not in row:
+                lines.append(f"| {name} | {row['lines']} | Sin ajuste | — | — | — |")
+                continue
+            x, y = row['vanishingPoint']
+            lines.append(f"| {name} | {row['lines']} | ({x:.2f}; {y:.2f}) | {row['meanAngleDeg']:.3f} | "
+                         f"{row['maxErrorPx']:.2f} | {row['meanAngleAgainstCalibrationDeg']:.3f} |")
     (ROOT / "analysis" / "out" / "reporte.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

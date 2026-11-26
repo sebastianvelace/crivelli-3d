@@ -17,6 +17,7 @@ const kindSel = document.getElementById('kind');
 const stats = document.getElementById('stats');
 const jsonBox = document.getElementById('json');
 const modeSel = document.getElementById('mode');
+const zoneSel = document.getElementById('zone');
 const elementSel = document.getElementById('element');
 const BASE = import.meta.env.DEV ? '/' : '../';
 
@@ -152,6 +153,10 @@ cv.addEventListener('mousedown', (e) => {
   }
   if (!pending) pending = p;
   else {
+    if (kindSel.value === 'orthogonals') {
+      data.orthogonalZones ??= Array(data.orthogonals.length).fill(null);
+      data.orthogonalZones.push(zoneSel.value || null);
+    }
     data[kindSel.value].push([...pending, ...p]);
     pending = null;
   }
@@ -188,7 +193,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key.toLowerCase() === 'z') {
-    pending ? (pending = null) : data[kindSel.value].pop();
+    if (pending) pending = null;
+    else {
+      data[kindSel.value].pop();
+      if (kindSel.value === 'orthogonals') {
+        data.orthogonalZones?.pop();
+        if (data.calibrationOrthogonalCount > data.orthogonals.length) {
+          data.calibrationOrthogonalCount = data.orthogonals.length;
+        }
+      }
+    }
     draw();
   }
 });
@@ -200,6 +214,10 @@ document.getElementById('load').onclick = async () => {
 };
 document.getElementById('clear').onclick = () => {
   data[kindSel.value] = [];
+  if (kindSel.value === 'orthogonals') {
+    data.orthogonalZones = [];
+    delete data.calibrationOrthogonalCount;
+  }
   draw();
 };
 document.getElementById('export').onclick = () => {
