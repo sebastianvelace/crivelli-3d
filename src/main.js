@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { Viewer } from './app/Viewer.js';
 import { createTour, TOUR_SECONDS } from './app/tour.js';
 import { MeasureTool, PRESETS } from './app/measure.js';
+import { drawPerspectiveOverlay } from './scene/perspectiveOverlay.js';
 import './style.css';
 import './viewer.css';
 
@@ -62,6 +63,8 @@ async function loadInferred(loader, meta) {
 
 function setupOverlays(viewer, calib) {
   const overlay = document.getElementById('overlay');
+  const perspective = document.getElementById('perspective-overlay');
+  drawPerspectiveOverlay(perspective, calib);
   const frame = document.getElementById('frame');
   const hud = document.getElementById('hud-mode');
   const numbers = document.getElementById('hud-numbers');
@@ -125,7 +128,7 @@ function setupOverlays(viewer, calib) {
       previousRect = rectKey;
       document.body.style.setProperty('--painting-left', `${r.left}px`);
       document.body.style.setProperty('--painting-top', `${r.top}px`);
-      for (const el of [overlay, frame]) {
+      for (const el of [overlay, frame, perspective]) {
         el.style.left = `${r.left}px`;
         el.style.top = `${r.top}px`;
         el.style.width = `${r.width}px`;
@@ -136,6 +139,7 @@ function setupOverlays(viewer, calib) {
     frame.style.opacity = k.toFixed(3);
     const s = viewer.settings;
     overlay.style.opacity = (s?.overlay ? s.overlayOpacity * k : 0).toFixed(3);
+    perspective.toggleAttribute('hidden', viewer.mode !== 'eye' || !viewer.showHelpers);
   };
 }
 

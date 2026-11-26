@@ -23,6 +23,12 @@
   opacity: 0;
 }
 
+#perspective-overlay {
+  position: absolute;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 #frame {
   box-shadow:
     0 0 0 1px #b19667,

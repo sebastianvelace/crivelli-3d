@@ -211,6 +211,7 @@ export class Viewer {
   }
 
   buildHelpers(paintingTexture) {
+    this.showHelpers = false;
     this.helpers = createPerspectiveHelpers(this.space, this.calib, this.planes, paintingTexture);
     this.helpers.visible = false;
     this.eyeMarker = createEyeMarker(this.space);
@@ -248,7 +249,7 @@ export class Viewer {
     this.walkBlocked = false;
     this.orbit.enabled = mode === 'orbit' || mode === 'model';
     if (mode !== 'walk' && this.pointerLock.isLocked) this.pointerLock.unlock();
-    this.eyeMarker.visible = mode === 'model' || this.helpers.visible;
+    this.setHelpersVisible(this.showHelpers);
     this.emit();
   }
 
@@ -393,8 +394,9 @@ export class Viewer {
   }
 
   setHelpersVisible(v) {
-    this.helpers.visible = v;
-    this.eyeMarker.visible = v || this.mode === 'model';
+    this.showHelpers = v;
+    this.helpers.visible = v && this.mode !== 'eye';
+    this.eyeMarker.visible = this.helpers.visible || this.mode === 'model';
   }
 
   /** 0..1: qué tanto estamos "dentro de la pintura" (en el ojo y con t = 1). */
