@@ -28,6 +28,7 @@ export class MeasureTool {
   constructor(viewer, overlay) {
     this.viewer = viewer;
     this.overlay = overlay; // contenedor HTML de las etiquetas
+    this.reticle = document.getElementById('reticle');
     this.enabled = false;
     this.pending = null;
     this.items = [];
@@ -60,10 +61,20 @@ export class MeasureTool {
 
   onClick(e) {
     const v = this.viewer;
-    if (!this.enabled || v.mode === 'walk' || v.animation) return;
+    const walking = v.mode === 'walk';
+    if (!this.enabled || v.mode === 'tour' || v.animation || (walking && !v.pointerLock.isLocked)) return;
     const rect = v.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    const ndc = walking ? new THREE.Vector2() :
+      new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     this.raycaster.setFromCamera(ndc, v.camera);
+    if (v.portalActive) {
+      if (!v.windowOpen) return;
+      const { x0, x1, y0, y1, z } = v.museum.aperture;
+      const { origin, direction } = this.raycaster.ray;
+      if (direction.z >= 0) return;
+      const portalHit = this.raycaster.ray.at((z - origin.z) / direction.z, new THREE.Vector3());
+      if (portalHit.x < x0 || portalHit.x > x1 || portalHit.y < y0 || portalHit.y > y1) return;
+    }
     const hit = this.raycaster.intersectObjects(v.pictureGroup.children, false)[0];
     if (!hit) return;
     const label = v.elementMeshes.get(hit.object.name)?.userData.label ?? hit.object.name;
@@ -115,6 +126,7 @@ export class MeasureTool {
   clear() {
     for (const it of this.items) {
       it.objects.forEach((o) => this.group.remove(o));
+      it.objects[2].geometry.dispose();
       it.div.remove();
     }
     this.items = [];
@@ -124,6 +136,7 @@ export class MeasureTool {
 
   /** Cada cuadro: coloca las etiquetas sobre el punto medio de cada medición. */
   update() {
+    this.reticle.hidden = !(this.enabled && this.viewer.mode === 'walk' && this.viewer.pointerLock.isLocked);
     const cam = this.viewer.camera;
     const w = this.viewer.renderer.domElement.clientWidth;
     const h = this.viewer.renderer.domElement.clientHeight;

@@ -14,28 +14,34 @@ async function loadJSON(path) {
 }
 
 async function main() {
-  const [calibration, sceneData] = await Promise.all([
+  const [calibration, sceneData, textureMeta] = await Promise.all([
     loadJSON('data/calibration.json'),
     loadJSON('data/scene.json'),
+    loadJSON('data/textures.json').catch((err) => {
+      console.warn('Sin texturas inferidas:', err.message);
+      return null;
+    }),
   ]);
-  const loader = new THREE.TextureLoader();
-  const painting = await loader.loadAsync(BASE + 'painting/crivelli_ng739_2048.jpg');
+  const progress = document.getElementById('load-progress');
+  const manager = new THREE.LoadingManager();
+  manager.onProgress = (_, loaded, total) => { progress.value = loaded / total * 100; };
+  const loader = new THREE.TextureLoader(manager);
+  const [painting, inferred] = await Promise.all([
+    loader.loadAsync(BASE + 'painting/crivelli_ng739_2048.jpg'),
+    loadInferred(loader, textureMeta),
+  ]);
   painting.colorSpace = THREE.SRGBColorSpace;
   painting.anisotropy = 8;
 
-  // Texturas del modo inferido (horneadas por analysis/infer.py). Si faltan, la
-  // app sigue funcionando en los modos fiel y neutro.
-  const inferred = await loadInferred(loader);
-
   const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting, inferred);
-  setupOverlays(viewer, calibration);
+  setupOverlays(viewer, calibration, painting.image);
   setupGui(viewer, calibration);
   document.getElementById('loading').remove();
 }
 
-async function loadInferred(loader) {
+async function loadInferred(loader, meta) {
+  if (!meta) return null;
   try {
-    const meta = await loadJSON('data/textures.json');
     const entries = await Promise.all(
       Object.entries(meta).map(async ([id, info]) => {
         const tex = await loader.loadAsync(BASE + info.file);
@@ -53,16 +59,28 @@ async function loadInferred(loader) {
 
 // ------------------------------------------------------------------ overlays HTML
 
-function setupOverlays(viewer, calib) {
-  const overlay = document.getElementById('overlay');
+function setupOverlays(viewer, calib, overlay) {
+  document.getElementById('overlay').replaceWith(overlay);
+  overlay.id = 'overlay';
+  overlay.alt = '';
   const frame = document.getElementById('frame');
   const hud = document.getElementById('hud-mode');
+  const numbers = document.getElementById('hud-numbers');
   const hint = document.getElementById('hint');
-  overlay.src = BASE + 'painting/crivelli_ng739_2048.jpg';
-  document.getElementById('plan-img').src = BASE + 'data/planta.png';
-  document.getElementById('hud-numbers').textContent =
-    `f = ${calib.focalPx.toFixed(0)} px · ojo a ${calib.eyeHeightM.toFixed(2)} m · ` +
-    `error de perspectiva ${calib.perspectiveErrorMeanDeg.toFixed(2)}° (${calib.linesUsed} rectas)`;
+  const touchWalk = document.getElementById('touch-walk');
+  const touchInput = matchMedia('(hover: none) and (pointer: coarse)');
+  const formatDecimal = (value) => value.toFixed(2).replace('.', ',');
+  numbers.textContent = `Ojo a ${formatDecimal(calib.eyeHeightM)} m de altura y a ${Math.round(viewer.museum.windowDistance * 100)} cm del cuadro · ` +
+    `la perspectiva de Crivelli se desvía ${formatDecimal(calib.perspectiveErrorMeanDeg)}°`;
+  for (const button of touchWalk.querySelectorAll('button')) {
+    const key = button.dataset.key;
+    button.addEventListener('pointerdown', (event) => {
+      button.setPointerCapture(event.pointerId);
+      viewer.keys.add(key);
+    });
+    button.addEventListener('lostpointercapture', () => viewer.keys.delete(key));
+  }
+  touchInput.addEventListener('change', () => viewer.emit());
 
   const MODE_TEXT = {
     museum: ['En el museo', 'Así cuelga el cuadro en la sala. «Volver al ojo de Crivelli» te lleva a la marca amarilla del piso (o caminá hasta ella).'],
@@ -87,14 +105,16 @@ function setupOverlays(viewer, calib) {
     document.body.dataset.mode = viewer.mode;
     legend.innerHTML = LEGEND[viewer.fillMode] ?? '';
     // En el museo y en el ojo todo es pintura: la leyenda de los modos no aplica.
-    legend.style.display = ['museum', 'eye', 'tour'].includes(viewer.mode) ? 'none' : '';
+    legend.hidden = ['museum', 'eye', 'tour', 'transition'].includes(viewer.mode) || viewer.walkBlocked;
+    numbers.hidden = !['museum', 'eye'].includes(viewer.mode);
+    const touchWalking = viewer.mode === 'walk' && touchInput.matches;
+    touchWalk.hidden = !touchWalking;
     const [title, defaultHint] = MODE_TEXT[viewer.mode] ?? ['', ''];
     const text = viewer.walkBlocked
       ? 'Parate en la marca amarilla (o usá «Volver al ojo») para que el cuadro se abra'
-      : defaultHint;
+      : touchWalking ? 'Arrastra para mirar · usa las flechas para caminar' : defaultHint;
     hud.textContent = title;
     hint.textContent = text;
-    hint.style.opacity = text ? 1 : 0;
   });
   viewer.emit();
 
@@ -170,10 +190,14 @@ function setupGui(viewer, calib) {
     caption.textContent = 'El cuadro se volvió transparente y nada cambió: detrás hay un espacio que proyecta exactamente la pintura.';
     caption.style.opacity = 1;
     clearTimeout(windowCaptionTimer);
-    windowCaptionTimer = setTimeout(() => (caption.style.opacity = 0), 6500);
+    windowCaptionTimer = setTimeout(() => {
+      caption.style.opacity = 0;
+      caption.textContent = '';
+    }, 6500);
   };
 
   const gui = new GUI({ title: 'Crivelli 3D' });
+  if (matchMedia('(max-width: 767px)').matches) gui.close();
   const actions = {
     volver: () => viewer.returnToEye(),
     museo: () => viewer.enterMuseum(),
@@ -190,13 +214,16 @@ function setupGui(viewer, calib) {
     creditos: () => document.getElementById('credits').showModal(),
   };
 
-  gui.add(actions, 'volver').name('⟲ Volver al ojo de Crivelli');
   gui.add(actions, 'museo').name('Volver al museo');
-  gui.add(actions, 'caminar').name('Entrar y caminar (WASD)');
-  gui.add(actions, 'orbita').name('Modo órbita');
+  gui.add(actions, 'volver').name('Volver al ojo (R)');
+  gui.add(actions, 'caminar').name('Entrar y caminar');
   gui.add(actions, 'maqueta').name('Modo maqueta');
+  gui.add(actions, 'recorrido').name(`Recorrido guiado (${TOUR_SECONDS} s)`);
+  const meas = gui.addFolder('Medir');
+  const advanced = gui.addFolder('Avanzado').close();
+  advanced.add(actions, 'orbita').name('Modo órbita');
 
-  const fill = gui.addFolder('Lo que Crivelli no pintó');
+  const fill = advanced.addFolder('Lo que Crivelli no pintó');
   fill.add(settings, 'fillMode', { 'Fiel al cuadro': 'fiel', 'Neutro (yeso)': 'neutro', Inferido: 'inferido' })
     .name('Modo').onChange((v) => viewer.setFillMode(v));
   fill.add(settings, 'markInferred').name('Marcar lo inferido').onChange((v) => {
@@ -212,30 +239,30 @@ function setupGui(viewer, calib) {
   };
   const presetNames = Object.fromEntries(PRESETS.map((p, i) => [p.name, i]));
   const measureState = { on: false, preset: 0 };
-  const meas = gui.addFolder('Medir (metrología de una vista)');
   const measureToggle = meas.add(measureState, 'on').name('Medir con dos clics').onChange((v) => measure.setEnabled(v));
   meas.add(measureState, 'preset', presetNames).name('Medición sugerida').onChange((i) => measure.showPreset(PRESETS[i]));
   meas.add({ all: () => PRESETS.forEach((p) => measure.showPreset(p)) }, 'all').name('Mostrar todas');
   meas.add({ clear: () => measure.clear() }, 'clear').name('Borrar mediciones');
   meas.close();
 
-  const check = gui.addFolder('Comprobar la geometría');
+  const check = advanced.addFolder('Comprobar la geometría');
   check.add(settings, 'overlay').name('Superponer la pintura');
   check.add(settings, 'overlayOpacity', 0, 1, 0.01).name('Opacidad');
   check.add(settings, 'helpers').name('Líneas y punto de fuga 3D').onChange((v) => viewer.setHelpersVisible(v));
   check.add(settings, 'plan').name('Planta reconstruida').onChange((v) => {
+    const img = document.getElementById('plan-img');
+    if (v && !img.hasAttribute('src')) img.src = BASE + 'data/planta.png';
     document.getElementById('plan').classList.toggle('visible', v);
   });
 
-  const extras = gui.addFolder('Extras');
+  const extras = advanced.addFolder('Extras');
   extras.add(settings, 'fog', 0, 1, 0.01).name('Perspectiva aérea (Leonardo)').onChange((v) => {
     viewer.fogStrength = v;
   });
-  extras.add(actions, 'recorrido').name(`▶ Recorrido guiado (${TOUR_SECONDS} s)`);
   extras.add(actions, 'captura').name('Guardar captura PNG');
   extras.close();
 
-  gui.add(actions, 'creditos').name('Créditos y fuentes');
+  advanced.add(actions, 'creditos').name('Créditos y fuentes');
   // Si el modo cambia desde código (por ejemplo, el recorrido guiado), el panel lo refleja.
   viewer.onChange(() => {
     if (measureState.on !== measure.enabled) {
@@ -247,7 +274,15 @@ function setupGui(viewer, calib) {
       gui.controllersRecursive().forEach((c) => c.updateDisplay());
     }
   });
-  document.getElementById('credits-close').addEventListener('click', () => document.getElementById('credits').close());
+  const credits = document.getElementById('credits');
+  document.getElementById('credits-close').addEventListener('click', () => credits.close());
+  credits.addEventListener('click', (event) => {
+    if (event.target !== credits) return;
+    const rect = credits.getBoundingClientRect();
+    if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) {
+      credits.close();
+    }
+  });
 
   // Atajo: tecla R = volver al ojo
   window.addEventListener('keydown', (e) => {

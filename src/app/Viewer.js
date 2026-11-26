@@ -81,8 +81,10 @@ export class Viewer {
     this.camera.quaternion.copy(lookQuaternion(start.position, start.target));
     this.camera.painterness = 0;
     this.camera.freeFov = 60;
-    this.renderer.domElement.addEventListener('click', () => {
-      if (this.mode === 'walk' && !this.animation) this.pointerLock.lock();
+    this.renderer.domElement.addEventListener('click', (event) => {
+      if (this.mode === 'walk' && !this.animation && event.pointerType !== 'touch' && !this.pointerLock.isLocked) {
+        this.pointerLock.lock();
+      }
     });
     // Teclas apretadas. Si la ventana pierde el foco (Esc del pointer lock, cambio
     // de pestaña, clic en el panel) el navegador no envía "keyup" y la tecla quedaría
@@ -97,6 +99,7 @@ export class Viewer {
     document.addEventListener('visibilitychange', releaseAll);
     document.addEventListener('pointerlockchange', releaseAll);
     this.renderer.domElement.addEventListener('contextmenu', releaseAll);
+    this.setupTouchLook();
 
     this.timer = new THREE.Timer();
     this.resize();
@@ -105,6 +108,29 @@ export class Viewer {
   }
 
   // ---------------------------------------------------------------- escena
+
+  setupTouchLook() {
+    const canvas = this.renderer.domElement;
+    let touch = null;
+    const angle = new THREE.Euler(0, 0, 0, 'YXZ');
+    canvas.addEventListener('pointerdown', (event) => {
+      if (this.mode !== 'walk' || event.pointerType !== 'touch' || touch) return;
+      touch = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      canvas.setPointerCapture(touch.id);
+    });
+    canvas.addEventListener('pointermove', (event) => {
+      if (this.mode !== 'walk' || touch?.id !== event.pointerId) return;
+      angle.setFromQuaternion(this.camera.quaternion);
+      angle.y -= (event.clientX - touch.x) * 0.004;
+      angle.x = THREE.MathUtils.clamp(angle.x - (event.clientY - touch.y) * 0.004, -1.54, 1.54);
+      this.camera.quaternion.setFromEuler(angle);
+      touch.x = event.clientX;
+      touch.y = event.clientY;
+    });
+    canvas.addEventListener('lostpointercapture', (event) => {
+      if (touch?.id === event.pointerId) touch = null;
+    });
+  }
 
   buildPicture(sceneData, inferred) {
     this.planes = resolvePlanes(this.space, sceneData.elements);

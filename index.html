@@ -21,9 +21,16 @@
       <p id="hud-numbers"></p>
     </header>
     <div id="measures"></div>
-    <p id="legend"></p>
-    <p id="hint"></p>
-    <p id="caption"></p>
+    <div id="reticle" aria-hidden="true" hidden></div>
+    <div id="visitor-notes">
+      <p id="hint"></p>
+      <p id="legend"></p>
+      <p id="caption"></p>
+    </div>
+    <nav id="touch-walk" aria-label="Movimiento" hidden>
+      <button type="button" data-key="KeyW" aria-label="Avanzar">↑</button>
+      <button type="button" data-key="KeyS" aria-label="Retroceder">↓</button>
+    </nav>
     <nav id="tour-controls" aria-label="Controles del recorrido" hidden>
       <span id="tour-progress" aria-live="polite"></span>
       <button id="tour-pause" type="button">Pausar</button>
@@ -59,7 +66,10 @@
       <button id="credits-close">Cerrar</button>
     </dialog>
 
-    <div id="loading">Cargando la pintura…</div>
+    <div id="loading">
+      <label for="load-progress">Cargando la pintura…</label>
+      <progress id="load-progress" max="100"></progress>
+    </div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
