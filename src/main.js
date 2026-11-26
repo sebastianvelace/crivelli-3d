@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import GUI from 'lil-gui';
 import { Viewer } from './app/Viewer.js';
-import { createTour } from './app/tour.js';
+import { createTour, TOUR_SECONDS } from './app/tour.js';
 import { MeasureTool, PRESETS } from './app/measure.js';
 import './style.css';
 
@@ -87,7 +87,7 @@ function setupOverlays(viewer, calib) {
     document.body.dataset.mode = viewer.mode;
     legend.innerHTML = LEGEND[viewer.fillMode] ?? '';
     // En el museo y en el ojo todo es pintura: la leyenda de los modos no aplica.
-    legend.style.display = viewer.mode === 'museum' || viewer.mode === 'eye' ? 'none' : '';
+    legend.style.display = ['museum', 'eye', 'tour'].includes(viewer.mode) ? 'none' : '';
     const [title, defaultHint] = MODE_TEXT[viewer.mode] ?? ['', ''];
     const text = viewer.walkBlocked
       ? 'Parate en la marca amarilla (o usá «Volver al ojo») para que el cuadro se abra'
@@ -101,7 +101,21 @@ function setupOverlays(viewer, calib) {
   // Cada cuadro: el marco y la superposición se ajustan al rectángulo de la pintura
   // y aparecen solo cuando estamos en el ojo.
   viewer.onFrame = () => {
+    const camera = viewer.camera;
+    const framed = viewer.mode === 'tour' && viewer.tourFramed;
+    const side = (camera.viewportW - camera.viewportH * camera.space.W / camera.space.H * 0.94) / 2 >= 200;
+    const margin = framed && !side ? Math.min(0.94, Math.max(0.5, 1 - 144 / camera.viewportH)) : 0.94;
+    if (camera.margin !== margin) {
+      camera.margin = margin;
+      camera.updateProjectionMatrix();
+    }
     const r = viewer.camera.paintingRect();
+    if (framed) {
+      document.body.dataset.tourFrame = side ? 'side' : 'stacked';
+      document.body.style.setProperty('--painting-left', `${r.left}px`);
+    } else if (document.body.dataset.tourFrame) {
+      delete document.body.dataset.tourFrame;
+    }
     for (const el of [overlay, frame]) {
       el.style.left = `${r.left}px`;
       el.style.top = `${r.top}px`;
@@ -131,17 +145,32 @@ function setupGui(viewer, calib) {
   viewer.settings = settings;
 
   const caption = document.getElementById('caption');
-  const tour = createTour(viewer, (text) => {
-    caption.textContent = text ?? '';
-    caption.style.opacity = text ? 1 : 0;
+  const measure = new MeasureTool(viewer, document.getElementById('measures'));
+  const tourControls = document.getElementById('tour-controls');
+  const tourProgress = document.getElementById('tour-progress');
+  const tourPause = document.getElementById('tour-pause');
+  let windowCaptionTimer;
+  const tour = createTour(viewer, measure, (state) => {
+    clearTimeout(windowCaptionTimer);
+    caption.textContent = state?.caption ?? '';
+    caption.style.opacity = state ? 1 : 0;
+    viewer.tourFramed = state?.framed ?? false;
+    tourControls.hidden = !state;
+    tourProgress.textContent = state ? `${state.index + 1}/${state.count}` : '';
+    tourPause.textContent = state?.paused ? 'Reanudar' : 'Pausar';
   });
   viewer.stopTour = () => tour.stop();
+  tourPause.addEventListener('click', () => tour.togglePause());
+  document.getElementById('tour-next').addEventListener('click', () => tour.next());
+  document.getElementById('tour-stop').addEventListener('click', () => tour.stop());
 
   // Cuando el cuadro se vuelve ventana por primera vez, se cuenta qué pasó.
   viewer.onWindowOpened = () => {
+    if (tour.active) return;
     caption.textContent = 'El cuadro se volvió transparente y nada cambió: detrás hay un espacio que proyecta exactamente la pintura.';
     caption.style.opacity = 1;
-    setTimeout(() => (caption.style.opacity = 0), 6500);
+    clearTimeout(windowCaptionTimer);
+    windowCaptionTimer = setTimeout(() => (caption.style.opacity = 0), 6500);
   };
 
   const gui = new GUI({ title: 'Crivelli 3D' });
@@ -176,7 +205,6 @@ function setupGui(viewer, calib) {
   fill.add(settings, 'evidence').name('Aristas: medido / supuesto').onChange((v) => viewer.setEvidenceVisible(v));
 
   // Medir dentro de la pintura (single view metrology)
-  const measure = new MeasureTool(viewer, document.getElementById('measures'));
   const prevFrame = viewer.onFrame;
   viewer.onFrame = (v) => {
     prevFrame?.(v);
@@ -185,7 +213,7 @@ function setupGui(viewer, calib) {
   const presetNames = Object.fromEntries(PRESETS.map((p, i) => [p.name, i]));
   const measureState = { on: false, preset: 0 };
   const meas = gui.addFolder('Medir (metrología de una vista)');
-  meas.add(measureState, 'on').name('Medir con dos clics').onChange((v) => measure.setEnabled(v));
+  const measureToggle = meas.add(measureState, 'on').name('Medir con dos clics').onChange((v) => measure.setEnabled(v));
   meas.add(measureState, 'preset', presetNames).name('Medición sugerida').onChange((i) => measure.showPreset(PRESETS[i]));
   meas.add({ all: () => PRESETS.forEach((p) => measure.showPreset(p)) }, 'all').name('Mostrar todas');
   meas.add({ clear: () => measure.clear() }, 'clear').name('Borrar mediciones');
@@ -203,13 +231,17 @@ function setupGui(viewer, calib) {
   extras.add(settings, 'fog', 0, 1, 0.01).name('Perspectiva aérea (Leonardo)').onChange((v) => {
     viewer.fogStrength = v;
   });
-  extras.add(actions, 'recorrido').name('▶ Recorrido guiado (60 s)');
+  extras.add(actions, 'recorrido').name(`▶ Recorrido guiado (${TOUR_SECONDS} s)`);
   extras.add(actions, 'captura').name('Guardar captura PNG');
   extras.close();
 
   gui.add(actions, 'creditos').name('Créditos y fuentes');
   // Si el modo cambia desde código (por ejemplo, el recorrido guiado), el panel lo refleja.
   viewer.onChange(() => {
+    if (measureState.on !== measure.enabled) {
+      measureState.on = measure.enabled;
+      measureToggle.updateDisplay();
+    }
     if (settings.fillMode !== viewer.fillMode) {
       settings.fillMode = viewer.fillMode;
       gui.controllersRecursive().forEach((c) => c.updateDisplay());
@@ -220,6 +252,7 @@ function setupGui(viewer, calib) {
   // Atajo: tecla R = volver al ojo
   window.addEventListener('keydown', (e) => {
     if (e.code === 'KeyR') viewer.returnToEye();
+    if (e.code === 'Escape' && tour.active) tour.stop();
   });
 
   // Exponer para depuración y capturas desde la consola

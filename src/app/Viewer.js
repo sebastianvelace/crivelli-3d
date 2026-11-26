@@ -365,7 +365,7 @@ export class Viewer {
     this.timer.update();
     const dt = Math.min(this.timer.getDelta(), 0.1);
 
-    if (this.animation) {
+    if (this.animation && !this.animation.paused) {
       const a = this.animation;
       a.t = Math.min(1, a.t + dt / a.duration);
       const e = easeInOut(a.t);
@@ -380,7 +380,7 @@ export class Viewer {
         this.animation = null;
         a.onDone?.();
       }
-    } else if (this.mode === 'walk') {
+    } else if (!this.animation && this.mode === 'walk') {
       this.walk(dt);
     } else if (this.orbit.enabled) {
       this.orbit.update();

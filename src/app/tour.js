@@ -1,65 +1,149 @@
 import * as THREE from 'three';
 import { lookQuaternion } from './Viewer.js';
+import { PRESETS } from './measure.js';
 
-/**
- * Recorrido guiado de ~60 s para grabar en video: sale del ojo, entra a la calle,
- * mira la casa de María, se asoma a su cuarto, sube para ver la maqueta y vuelve
- * al ojo de Crivelli, donde la escena se convierte otra vez en la pintura.
- */
 const STOPS = [
-  { caption: 'El ojo de Crivelli: el único lugar desde donde la calle es la pintura.', pos: [0, 1.51, 0], look: [0, 1.51, -5], t: 1, fov: 70, hold: 4 },
-  { caption: 'Entramos al cuadro: el piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.6], look: [-0.2, 1.2, -8], t: 0, fov: 70, dur: 5, hold: 2 },
-  { caption: 'Gabriel y san Emigdio son "cartones" a la profundidad que dicta la perspectiva.', pos: [1.1, 1.35, -1.2], look: [-0.3, 1.0, -2.6], t: 0, fov: 65, dur: 6, hold: 3 },
-  { caption: 'La calle se aleja hacia el punto de fuga: la escalera, el arco y el puente.', pos: [-0.5, 1.6, -5.5], look: [0, 1.6, -14], t: 0, fov: 65, dur: 7, hold: 3 },
-  { caption: 'Modo fiel: mirando hacia atrás solo queda lo que Crivelli pintó; los huecos son lo que nunca mostró.', pos: [-0.6, 1.7, -9.5], look: [0.4, 1.2, -1], t: 0, fov: 70, dur: 6, hold: 4, fill: 'fiel' },
-  { caption: 'Modo neutro: lo que el pintor no mostró queda en color yeso, sin inventar nada.', pos: [-0.6, 1.7, -9.5], look: [0.4, 1.2, -1], t: 0, fov: 70, dur: 0.1, hold: 4, fill: 'neutro' },
-  { caption: 'La casa de María: fachada, techo de vigas y el cuarto detrás de las pilastras.', pos: [-0.4, 1.4, -2.3], look: [2.1, 1.3, -3.2], t: 0, fov: 70, dur: 6, hold: 3 },
-  { caption: 'Vista de maqueta: la geometría completa, como en la reconstrucción de la Flagelación.', pos: [-38, 50, 58], look: [0.4, 3, -11], t: 0, fov: 14, dur: 6, hold: 4 },
-  { caption: 'Volvemos al ojo… y el espacio vuelve a ser la pintura.', pos: [0, 1.51, 0], look: [0, 1.51, -5], t: 1, fov: 70, dur: 6, hold: 3 },
+  { caption: 'La Anunciación cuelga en el museo a su tamaño real.', pose: 'museum', hold: 4 },
+  { caption: 'La marca amarilla señala el lugar desde donde Crivelli construyó la perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 4, hold: 2 },
+  { caption: 'Al llegar al ojo, el cuadro se abre. La calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 5 },
+  { caption: 'María y Gabriel miden casi lo mismo de rodillas. La escala también se conserva al fondo de la calle.', pose: 'eye', measure: true, hold: 5 },
+  { caption: 'Entramos al cuadro. El piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 4, hold: 2 },
+  { caption: 'Las huellas y las contrahuellas dan volumen a la escalera del niño.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
+  { caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1], fill: 'fiel', travel: 4, hold: 3 },
+  { caption: 'En modo inferido, los fragmentos ocultos se completan a partir de la textura visible.', fill: 'inferido', hold: 4 },
+  { caption: 'La casa de María tiene una fachada, un techo de vigas y un cuarto detrás de las pilastras.', pos: [-0.4, 1.4, -2.3], look: [2.1, 1.3, -3.2], fill: 'neutro', travel: 5, hold: 3 },
+  { caption: 'La maqueta deja ver cómo se distribuyen las fachadas, el arco y el fondo.', pos: [-38, 50, 58], look: [0.4, 3, -11], fov: 14, exterior: true, travel: 5, hold: 4 },
+  { caption: 'Al volver al ojo, el espacio vuelve a ser la pintura.', pose: 'eye', travel: 5, hold: 3 },
 ];
 
-export function createTour(viewer, onCaption) {
-  let cancelled = false;
-  let timer = null;
+export const TOUR_SECONDS = STOPS.reduce((total, { travel = 0, hold }) => total + travel + hold, 0);
 
-  const run = (i) => {
-    if (cancelled || i >= STOPS.length) {
-      onCaption(null);
-      viewer.setMode('eye');
-      return;
+export function createTour(viewer, measure, onUpdate) {
+  let index = -1;
+  let paused = false;
+  let arrived = false;
+  let timer = null;
+  let remaining = 0;
+  let deadline = 0;
+
+  const poseFor = (stop) => {
+    if (stop.pose === 'museum') {
+      const { position, target } = viewer.museum.startPose;
+      return { position, quaternion: lookQuaternion(position, target), painterness: 0, fov: 60 };
     }
-    const s = STOPS[i];
-    onCaption(s.caption);
-    if (s.fill) viewer.setFillMode(s.fill);
-    // Las paradas "en el ojo" usan la calibración exacta, no un número fijo.
-    const atEye = s.t === 1;
-    const position = atEye ? viewer.space.eye.clone() : new THREE.Vector3(...s.pos);
-    const quaternion = atEye ? new THREE.Quaternion() : lookQuaternion(position, new THREE.Vector3(...s.look));
-    const next = () => {
-      timer = setTimeout(() => run(i + 1), (s.hold ?? 2) * 1000);
-    };
-    if (i === 0) {
-      // Desde el museo el viaje hasta el ojo es más largo; al llegar, el cuadro se vuelve ventana.
-      const duration = viewer.camera.position.distanceTo(viewer.space.eye) > 1 ? 3.2 : 1.2;
-      viewer.animateTo({ position, quaternion, painterness: s.t, fov: s.fov, duration }, () => {
-        viewer.windowOpen = true;
-        next();
-      });
-    } else {
-      viewer.animateTo({ position, quaternion, painterness: s.t, fov: s.fov, duration: s.dur }, next);
+    if (stop.pose === 'eye') {
+      return { position: viewer.space.eye, quaternion: new THREE.Quaternion(), painterness: 1, fov: 70 };
     }
+    if (!stop.pos) return null;
+    const position = new THREE.Vector3(...stop.pos);
+    return { position, quaternion: lookQuaternion(position, new THREE.Vector3(...stop.look)), painterness: 0, fov: stop.fov ?? 70 };
   };
 
+  function update() {
+    const stop = STOPS[index];
+    onUpdate(stop ? { index, count: STOPS.length, caption: stop.caption, framed: stop.pose === 'eye', paused } : null);
+  }
+
+  function applyPose(pose) {
+    if (!pose) return;
+    viewer.camera.position.copy(pose.position);
+    viewer.camera.quaternion.copy(pose.quaternion);
+    viewer.camera.painterness = pose.painterness;
+    viewer.camera.freeFov = pose.fov;
+    viewer.camera.updateProjectionMatrix();
+  }
+
+  function wait() {
+    if (paused) return;
+    deadline = performance.now() + remaining;
+    timer = setTimeout(() => run(index + 1), remaining);
+  }
+
+  function arrive(stop) {
+    if (stop.pose === 'eye') viewer.openWindow();
+    if (stop.measure) {
+      for (const id of ['maria', 'gabriel', 'hombre_dorado']) {
+        measure.showPreset(PRESETS.find((preset) => preset.a[0] === id));
+      }
+    }
+    arrived = true;
+    remaining = stop.hold * 1000;
+    wait();
+  }
+
+  function run(next) {
+    clearTimeout(timer);
+    timer = null;
+    measure.clear();
+    if (next >= STOPS.length) {
+      stop();
+      return;
+    }
+    index = next;
+    arrived = false;
+    const stage = STOPS[index];
+    viewer.tourExterior = stage.exterior === true;
+    viewer.setFillMode(stage.fill ?? viewer.fillMode);
+    const pose = poseFor(stage);
+    update();
+    if (stage.travel) {
+      viewer.animateTo({ ...pose, duration: stage.travel }, () => arrive(stage));
+      viewer.animation.paused = paused;
+    } else {
+      applyPose(pose);
+      arrive(stage);
+    }
+  }
+
+  function stop() {
+    if (index < 0) return;
+    index = -1;
+    clearTimeout(timer);
+    timer = null;
+    viewer.animation = null;
+    viewer.tourExterior = false;
+    viewer.openWindow();
+    viewer.setFillMode('neutro');
+    measure.clear();
+    viewer.camera.margin = 0.94;
+    viewer.camera.updateProjectionMatrix();
+    update();
+    if (viewer.eyeFactor() > 0.999) viewer.setMode('eye');
+    else viewer.returnToEye(1.2);
+  }
+
   return {
+    get active() { return index >= 0; },
     start() {
-      cancelled = false;
+      clearTimeout(timer);
+      viewer.animation = null;
+      paused = false;
+      measure.setEnabled(false);
+      viewer.windowOpen = false;
+      viewer.panelOpacity = 1;
       viewer.setMode('tour');
+      viewer.setFillMode('neutro');
       run(0);
     },
-    stop() {
-      cancelled = true;
-      clearTimeout(timer);
-      onCaption(null);
+    stop,
+    togglePause() {
+      if (index < 0) return;
+      paused = !paused;
+      if (viewer.animation) viewer.animation.paused = paused;
+      else if (paused) {
+        clearTimeout(timer);
+        remaining = Math.max(0, deadline - performance.now());
+      } else wait();
+      update();
+    },
+    next() {
+      if (index < 0) return;
+      if (!arrived && STOPS[index].pose === 'eye') {
+        applyPose(poseFor(STOPS[index]));
+        viewer.openWindow();
+      }
+      viewer.animation = null;
+      run(index + 1);
     },
   };
 }

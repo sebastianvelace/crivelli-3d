@@ -85,6 +85,64 @@ body {
   max-width: 80vw;
 }
 
+#tour-controls {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid #584a3b;
+  border-radius: 6px;
+  background: #211912;
+  max-width: calc(100vw - 32px);
+  font: 13px system-ui, sans-serif;
+}
+
+#tour-controls[hidden] {
+  display: none;
+}
+
+#tour-progress {
+  margin: 0 4px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+#tour-controls button {
+  padding: 4px 7px;
+  border: 1px solid #78644e;
+  border-radius: 3px;
+  color: var(--ink);
+  background: #30251b;
+  cursor: pointer;
+}
+
+body[data-mode='tour'] #caption {
+  bottom: 65px;
+}
+
+body[data-tour-frame='side'] :is(#caption, #tour-controls) {
+  left: 18px;
+  right: auto;
+  max-width: calc(var(--painting-left) - 50px);
+  transform: none;
+  text-align: left;
+}
+
+body[data-tour-frame='stacked'] #caption {
+  top: 8px;
+  bottom: auto;
+  font-size: 14px;
+}
+
+body[data-tour-frame='stacked'] #hud {
+  display: none;
+}
+
 #hint {
   bottom: 16px;
 }
