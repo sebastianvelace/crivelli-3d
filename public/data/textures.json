@@ -42,10 +42,250 @@
    786,
    1814
   ],
-  "seenFraction": 0.754,
+  "seenFraction": 0.838,
   "method": "inpaint",
-  "backColor": "#534634",
+  "backColor": "#4e402d",
   "file": "textures/pared_izquierda.jpg"
+ },
+ "balcon_fondo": {
+  "bounds": [
+   -12.189761042161573,
+   2.038868516501956,
+   -7.773641398551119,
+   7.038286379065688
+  ],
+  "size": [
+   971,
+   1099
+  ],
+  "seenFraction": 0.14,
+  "method": "inpaint",
+  "backColor": "#4d4230",
+  "file": "textures/balcon_fondo.jpg"
+ },
+ "escalera_frente": {
+  "bounds": [
+   -2.53201900670374,
+   0.09919307049996395,
+   -1.6286279974385405,
+   2.0321841270894705
+  ],
+  "size": [
+   198,
+   425
+  ],
+  "seenFraction": 0.646,
+  "method": "inpaint",
+  "backColor": "#61503d",
+  "file": "textures/escalera_frente.jpg"
+ },
+ "parapeto": {
+  "bounds": [
+   -2.0991711956846886,
+   2.0302334382158547,
+   -1.8760535008581227,
+   3.881777293791537
+  ],
+  "size": [
+   49,
+   407
+  ],
+  "seenFraction": 0.984,
+  "method": "inpaint",
+  "backColor": "#645e51",
+  "file": "textures/parapeto.jpg"
+ },
+ "parapeto_lateral": {
+  "bounds": [
+   -8.948195520386692,
+   2.0302334382158547,
+   -7.5475387976070225,
+   3.891026043300895
+  ],
+  "size": [
+   308,
+   409
+  ],
+  "seenFraction": 0.997,
+  "method": "inpaint",
+  "backColor": "#3d3526",
+  "file": "textures/parapeto_lateral.jpg"
+ },
+ "escalera_descanso": {
+  "bounds": [
+   -2.5650482136787427,
+   -7.625732624865136,
+   -1.8489191160942076,
+   -7.158812919693379
+  ],
+  "size": [
+   157,
+   102
+  ],
+  "seenFraction": 0.981,
+  "method": "inpaint",
+  "backColor": "#6c6551",
+  "file": "textures/escalera_descanso.jpg"
+ },
+ "escalera_contrahuella_1": {
+  "bounds": [
+   -2.5320190747821485,
+   1.7731899028260059,
+   -1.9308654826005431,
+   2.0295271085971454
+  ],
+  "size": [
+   132,
+   56
+  ],
+  "seenFraction": 0.931,
+  "method": "inpaint",
+  "backColor": "#888473",
+  "file": "textures/escalera_contrahuella_1.jpg"
+ },
+ "escalera_huella_1": {
+  "bounds": [
+   -2.5320190747821494,
+   -7.527539000000002,
+   -1.9308654826005436,
+   -7.181886698979576
+  ],
+  "size": [
+   132,
+   76
+  ],
+  "seenFraction": 0.221,
+  "method": "inpaint",
+  "backColor": "#797666",
+  "file": "textures/escalera_huella_1.jpg"
+ },
+ "escalera_contrahuella_2": {
+  "bounds": [
+   -2.4156732749453997,
+   1.5346420699772783,
+   -1.9308655580312828,
+   1.7744792993447902
+  ],
+  "size": [
+   106,
+   52
+  ],
+  "seenFraction": 0.959,
+  "method": "inpaint",
+  "backColor": "#898575",
+  "file": "textures/escalera_contrahuella_2.jpg"
+ },
+ "escalera_huella_2": {
+  "bounds": [
+   -2.4156732749454077,
+   -7.181650000000024,
+   -1.9304480890483082,
+   -6.897131079235037
+  ],
+  "size": [
+   106,
+   62
+  ],
+  "seenFraction": 0.272,
+  "method": "inpaint",
+  "backColor": "#7f7c6c",
+  "file": "textures/escalera_huella_2.jpg"
+ },
+ "escalera_contrahuella_3": {
+  "bounds": [
+   -2.320471869187496,
+   1.2924462043636535,
+   -1.9308653850382758,
+   1.5358893809437666
+  ],
+  "size": [
+   85,
+   53
+  ],
+  "seenFraction": 0.988,
+  "method": "inpaint",
+  "backColor": "#888474",
+  "file": "textures/escalera_contrahuella_3.jpg"
+ },
+ "escalera_huella_3": {
+  "bounds": [
+   -2.3204718691874966,
+   -6.898622000000001,
+   -1.9307965616809146,
+   -6.586871375792805
+  ],
+  "size": [
+   85,
+   68
+  ],
+  "seenFraction": 0.745,
+  "method": "inpaint",
+  "backColor": "#888676",
+  "file": "textures/escalera_huella_3.jpg"
+ },
+ "escalera_contrahuella_4": {
+  "bounds": [
+   -2.215688027602639,
+   1.037055470643518,
+   -1.9308653366101176,
+   1.293628400855964
+  ],
+  "size": [
+   62,
+   56
+  ],
+  "seenFraction": 0.984,
+  "method": "inpaint",
+  "backColor": "#878373",
+  "file": "textures/escalera_contrahuella_4.jpg"
+ },
+ "escalera_huella_4": {
+  "bounds": [
+   -2.215688027602639,
+   -6.587106,
+   -1.9308653366101176,
+   -6.275553689189192
+  ],
+  "size": [
+   62,
+   68
+  ],
+  "seenFraction": 0.984,
+  "method": "inpaint",
+  "backColor": "#868576",
+  "file": "textures/escalera_huella_4.jpg"
+ },
+ "escalera_contrahuella_5": {
+  "bounds": [
+   -2.110838930733085,
+   0.7501619263782573,
+   -1.930865518568687,
+   1.0382024504930616
+  ],
+  "size": [
+   39,
+   63
+  ],
+  "seenFraction": 0.974,
+  "method": "inpaint",
+  "backColor": "#837e6d",
+  "file": "textures/escalera_contrahuella_5.jpg"
+ },
+ "escalera_huella_5": {
+  "bounds": [
+   -2.110838930733085,
+   -6.275396,
+   -1.930865518568687,
+   -5.902963211562117
+  ],
+  "size": [
+   39,
+   81
+  ],
+  "seenFraction": 0.984,
+  "method": "inpaint",
+  "backColor": "#777462",
+  "file": "textures/escalera_huella_5.jpg"
  },
  "pared_derecha": {
   "bounds": [
@@ -305,32 +545,32 @@
  },
  "balcon_figuras": {
   "bounds": [
-   -1.6026554381700133,
-   1.8411899734001476,
-   -1.0273992156032248,
-   3.6341418495754665
+   -2.5353402971789794,
+   2.0321841270894705,
+   -1.6253067069633007,
+   4.868566192944177
   ],
   "size": [
-   126,
-   394
+   200,
+   624
   ],
-  "seenFraction": 1.0,
+  "seenFraction": 0.996,
   "method": "inpaint",
-  "backColor": "#524332",
+  "backColor": "#524331",
   "file": "textures/balcon_figuras.jpg"
  },
  "nino": {
   "bounds": [
-   -1.5627654081380096,
-   1.8411899734001476,
-   -1.2457446431468233,
-   2.605398969802742
+   -2.4722357781494244,
+   2.0321841270894705,
+   -1.9707209163882298,
+   3.2411338600767223
   ],
   "size": [
-   69,
-   168
+   110,
+   265
   ],
-  "seenFraction": 1.0,
+  "seenFraction": 0.99,
   "method": "inpaint",
   "backColor": "#544a38",
   "file": "textures/nino.jpg"
