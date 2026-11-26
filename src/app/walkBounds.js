@@ -4,6 +4,7 @@ const WALL_CLEARANCE = 0.3;
 const STEP_TOP = -11.6;
 const STEP_APPROACH = -11.5;
 const PLATFORM_HEIGHT = 0.614;
+const STREET_END = -13.5;
 
 // Cerca de una pared solo se amortigua la componente que apunta hacia ella.
 function softLimit(position, step, min, max) {
@@ -42,7 +43,7 @@ export function constrainWalk(position, move, aperture, windowOpen) {
   const canCross = windowOpen && inAperture;
   const approachingLeftWall = !fromMuseum && x < -1.55 && position.z > -4.67;
   const z = softLimit(position.z, move.z,
-    fromMuseum ? (canCross ? -14.1 : frontWall) : approachingLeftWall ? -4.67 : -14.1,
+    fromMuseum ? (canCross ? STREET_END : frontWall) : approachingLeftWall ? -4.67 : STREET_END,
     fromMuseum || canCross ? ROOM.z1 - WALL_CLEARANCE : backWall);
 
   const inThreshold = windowOpen && z > backWall && z < frontWall;
