@@ -129,19 +129,22 @@ export function createMuseum(space, calib, paintingTexture) {
   ring.position.set(0, 0.006, 0);
   const label = textPlane(
     ['EL OJO DE CRIVELLI', `ojo a ${calib.eyeHeightM.toFixed(2).replace('.', ',')} m · a ${Math.round(d * 100)} cm del cuadro`],
-    0.9, 0.2, { bg: null, fg: '#ffd400', size: 40 },
+    1.02, 0.29, { bg: '#2a1a14', fg: '#ffe277', size: 54 },
   );
   label.rotation.x = -Math.PI / 2;
-  label.position.set(0, 0.007, 0.42);
-  const pole = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.006, 0.006, space.eyeHeight, 8),
-    new THREE.MeshBasicMaterial({ color: '#ffd400', transparent: true, opacity: 0.5 }),
+  label.position.set(0, 0.007, -0.36);
+  const eyeDot = new THREE.Mesh(
+    new THREE.SphereGeometry(0.035, 16, 12),
+    new THREE.MeshBasicMaterial({ color: '#ffe277' }),
   );
-  pole.position.set(0, space.eyeHeight / 2, 0);
-  const eyeDot = new THREE.Mesh(new THREE.SphereGeometry(0.025, 16, 12), new THREE.MeshBasicMaterial({ color: '#ffd400' }));
   eyeDot.position.copy(space.eye);
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(0.053, 16, 12),
+    new THREE.MeshBasicMaterial({ color: '#ffd400', transparent: true, opacity: 0.22, depthWrite: false }),
+  );
+  eyeDot.add(halo);
   const marker = new THREE.Group();
-  marker.add(ring, label, pole, eyeDot);
+  marker.add(ring, label, eyeDot);
   group.add(marker);
 
   // Luces (solo afectan a los materiales del museo; la escena proyectada no usa luces)

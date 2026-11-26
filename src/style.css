@@ -89,6 +89,17 @@ body {
   bottom: 16px;
 }
 
+body[data-mode='museum'] #hint {
+  top: 106px;
+  right: 18px;
+  bottom: auto;
+  left: 18px;
+  width: fit-content;
+  max-width: min(320px, calc(100vw - 36px));
+  transform: none;
+  text-align: left;
+}
+
 #caption {
   bottom: 120px;
   font-family: Georgia, serif;

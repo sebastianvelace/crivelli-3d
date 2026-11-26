@@ -84,6 +84,7 @@ function setupOverlays(viewer, calib) {
   const legend = document.getElementById('legend');
 
   viewer.onChange(() => {
+    document.body.dataset.mode = viewer.mode;
     legend.innerHTML = LEGEND[viewer.fillMode] ?? '';
     // En el museo y en el ojo todo es pintura: la leyenda de los modos no aplica.
     legend.style.display = viewer.mode === 'museum' || viewer.mode === 'eye' ? 'none' : '';
