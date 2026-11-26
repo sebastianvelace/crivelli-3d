@@ -28,13 +28,14 @@ npm run dev
 | --- | --- |
 | Panel → *Volver al ojo de Crivelli* (o tecla `R`) | Anima la cámara de regreso al punto de vista del pintor |
 | *Volver al museo* | Vuelve a la sala: el cuadro es otra vez un objeto colgado |
-| *Entrar y caminar* | Primera persona: clic para mirar con el mouse, `WASD` para moverse, `Shift` para correr, `Q`/`E` para bajar o subir, `Esc` para soltar el mouse |
-| *Modo órbita* | Girar, acercar y desplazar con el mouse |
+| *Entrar y caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
+| *Avanzado → Modo órbita* | Girar, acercar y desplazar con el mouse |
 | *Modo maqueta* | Vista casi axonométrica de toda la reconstrucción |
-| *Lo que Crivelli no pintó* | Modo fiel, neutro (por defecto) o inferido; marcar lo inferido; aristas medido/supuesto |
-| *Medir* | Dos clics sobre la escena dan una distancia en metros; también hay mediciones sugeridas |
-| *Comprobar la geometría* | Superponer la pintura (con opacidad), líneas y punto de fuga en 3D, planta reconstruida |
-| *Extras* | Perspectiva aérea según Leonardo, recorrido guiado de unos 60 s, captura PNG |
+| *Avanzado → Lo que Crivelli no pintó* | Modo fiel, neutro (por defecto) o inferido; marcar lo inferido; aristas medido/supuesto |
+| *Medir* | Selecciona dos puntos para obtener una distancia en metros. Al caminar, apunta con la mira y selecciona cada punto con un clic. También hay mediciones sugeridas. |
+| *Avanzado → Comprobar la geometría* | Superponer la pintura (con opacidad), líneas y punto de fuga en 3D, planta reconstruida |
+| *Recorrido guiado* | 11 paradas en 73 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
+| *Avanzado → Extras* | Perspectiva aérea según Leonardo y captura PNG |
 
 ### Publicar gratis
 
@@ -63,7 +64,7 @@ Lee `scene.json` y `calibration.json`, y hornea `public/textures/*.jpg`, `public
 
 ---
 
-## Dos modos: lo pintado y lo inferido
+## Tres modos: lo pintado y lo inferido
 
 Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la pintura. La diferencia aparece al entrar y mirar lo que el pintor no mostró. El panel *Lo que Crivelli no pintó* tiene tres opciones:
 
@@ -85,9 +86,7 @@ El modo inferido rellena el resto **por continuidad (inpainting)**: El resto se 
 
 La lámina `docs/07_mascaras_de_evidencia.jpg` muestra, para cada elemento, qué fracción vio el pintor (por ejemplo, del piso de la calle solo el 25 %; de la fachada de María, el 96 %).
 
-Al etiquetar la escena aparecieron dos inconsistencias, que se corrigieron:
-- **Muro derecho:** su borde lejano tapaba al hombre del manto dorado y a la maceta del puente. Se recortó donde empieza el puente.
-- **Balcón izquierdo:** las figuras del balcón quedaban detrás del propio muro. Se adelantaron 1,1 m, porque el balcón sobresale, y quedaron marcadas como supuesto.
+El borde lejano del muro derecho se recortó donde empieza el puente para dejar a la vista al hombre del manto dorado y la maceta. En el balcón izquierdo, se recortó el muro lateral y se retranqueó el fondo para conservar la oclusión de las figuras según sus siluetas.
 
 ---
 
@@ -122,7 +121,26 @@ Es la idea central de la *single view metrology* de Criminisi: cada clic es un r
 
 ### El museo y la ventana de Alberti (`src/scene/museum.js`)
 
-El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. Mide 146,5 cm de ancho, está a 111 cm del ojo y tiene el punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. Desde la calle, mirando hacia atrás, se ve la sala a través del marco. En órbita y maqueta la sala se oculta para no tapar la escena.
+El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. Mide 146,5 cm de ancho, está a 111 cm del ojo y tiene el punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. El anillo y la cartela señalan el punto en el piso, y una esfera indica la altura del ojo. La maqueta conserva la línea vertical auxiliar para leer esa altura respecto del suelo.
+
+Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. El mapa de profundidad de la pintura se calcula por separado. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. Entre el marco y el piso pintado hay un pequeño umbral de yeso marcado como `assumed`, visible desde la calle y excluido del mapa de profundidad. En órbita y maqueta se ocultan la sala y el portal.
+
+### Escalera del niño y balcón izquierdo
+
+Se adoptó la hipótesis A. La junta visible del bloque con la sillería lateral, cerca de `u = 300`, fija el frente a **7,53 m** si se aproxima por un plano frontal. El apoyo de los pies del niño, cerca de `(120, 2129)`, levanta el descanso a **2,03 m** sobre la calle. Usar un pie de escalera en `v = 2650` daría **9,38 m** de profundidad. La parte inferior queda tapada por el ala de Gabriel, así que esa alternativa depende de un contacto con el piso que no se observa.
+
+El canto visible y su sucesión de alturas guían cinco huellas y contrahuellas. El modelo supone una arista a X constante y separa el frente del parapeto de su cara lateral. La sillería conserva el plano lateral medido. El nuevo bloque, el fondo retranqueado del balcón y los anclajes de las figuras se marcan como `assumed`. Las diez siluetas manuales se conservan.
+
+| Figura | Altura en el modelo | Referencia |
+| --- | --- | --- |
+| Niño | 1,21 m | Extremos de la silueta manual, incluido el gorro |
+| Hombre de la izquierda | 1,77 m | Tocado en `v ≈ 1274` |
+| Hombre del centro | 1,58 m | Tocado en `v ≈ 1330` |
+| Hombre de la derecha | 1,65 m | Tocado en `v ≈ 1310` |
+
+Las tres estaturas adultas se calculan con el mismo plano frontal y un apoyo supuesto a **3,10 m** de altura. La pintura oculta sus pies. Estas cifras dependen del nivel elegido para el balcón y no son mediciones independientes de la pintura.
+
+![Escalera y descanso vistos en perspectiva](docs/16_escalera_con_perspectiva.png)
 
 | | |
 | --- | --- |
@@ -243,7 +261,7 @@ Por construcción, cada vértice visto desde el ojo cae sobre su píxel. **Por e
 
 Cada fragmento se proyecta con la matriz (proyección · vista) del pintor. Sus coordenadas NDC, llevadas a [0, 1], son la coordenada de textura dentro de la pintura: es la ventana de Alberti al revés.
 
-Para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow map*. Primero renderizamos la profundidad de la escena desde el ojo. Si un fragmento está más lejos que lo primero que el ojo ve en esa dirección, queda oculto en la pintura y se pinta de color «yeso» neutro (con la opción *Resaltar zonas ocultas* se ve en rosa). Las caras traseras también son neutras: los cartones tienen el reverso liso.
+Desde la posición exacta del ojo el propio render resuelve qué superficie se ve primero, y todas las superficies de un mismo rayo muestrean el mismo píxel. Fuera del ojo, para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow map*. Primero renderizamos la profundidad de la escena desde el ojo. Si un fragmento está más lejos que lo primero que el ojo ve en esa dirección, queda oculto en la pintura y se pinta de color «yeso» neutro (con la opción *Resaltar zonas ocultas* se ve en rosa). Las caras traseras también son neutras: los cartones tienen el reverso liso.
 
 ---
 
@@ -256,7 +274,7 @@ Para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow m
 5. **Pared del fondo de la logia:** se supone 1,5 m detrás de la fachada. La pintura no da otra pista. El techo de casetones se ancla a esa pared, y la logia resulta de unos 2 m de alto.
 6. **Cuarto de María:** el techo se ancla en el borde superior de la puerta (sobre la fachada) y la pared del fondo, en la línea donde termina el techo. El cuarto resulta de ≈ 1,4 m de fondo y ≈ 2 m de alto.
 7. **Paredes laterales:** la pintura no es perfectamente coherente. El muro derecho no sigue exactamente una sola recta hacia el punto de fuga a lo largo de toda la calle, así que tomamos la base cercana, la más nítida. Por eso al caminar aparecen algunas juntas.
-8. **Lo que no se modela:** el balcón, las cornisas y los relieves quedan como planos («cartón pintado»), y la torre lejana va pintada sobre el fondo del cielo. Las figuras son cartones frontales recortados con polígonos trazados a mano.
+8. **Lo que no se modela:** las cornisas y los relieves conservan su representación plana, y la torre lejana va pintada sobre el fondo del cielo. Las figuras son cartones frontales recortados con polígonos trazados a mano.
 9. **Profundidad del fondo:** el cielo y la ciudad lejana están en un plano a 70 m. Cualquier valor grande da la misma vista desde el ojo.
 
 ---
@@ -313,8 +331,11 @@ RESENA.md                     reseña de una página (objetivo y relación con G
 | 10. Siluetas con GrabCut y editor de polígonos | 2 | ✅ |
 | 11. Herramienta de medición | 2 | ✅ |
 | 12. Museo y ventana de Alberti | 3 | ✅ |
+| 13. Portal, límites de marcha y marca del ojo | — | ✅ |
+| 14. Escalera y balcón con profundidad documentada | — | ✅ |
+| 15. Recorrido con mediciones y controles para pantallas táctiles | — | ✅ |
 
-**Mejoras posibles:** darle volumen a la arquitectura (pilastras, cornisa, balcón, escalones uno por uno) modelándola a mano, por ejemplo en Blender con la cámara calibrada; darles relieve a las figuras con un mapa de profundidad (Depth Anything V2); y controles táctiles para celular.
+**Pendientes:** cerrar el cuarto de María con caras laterales, dar grosor a pilastras y cornisas, y explorar la sensibilidad de la reconstrucción a la altura de referencia y la distancia focal.
 
 ---
 
