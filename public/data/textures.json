@@ -10,7 +10,7 @@
    2048,
    2048
   ],
-  "seenFraction": 0.518,
+  "seenFraction": 0.52,
   "method": "inpaint",
   "backColor": "#4b4c41",
   "file": "textures/fondo_cielo.jpg"
@@ -26,9 +26,9 @@
    795,
    2048
   ],
-  "seenFraction": 0.273,
+  "seenFraction": 0.268,
   "method": "neutral",
-  "backColor": "#635847",
+  "backColor": "#645948",
   "file": "textures/piso_calle.jpg"
  },
  "pilar_izquierdo": {
@@ -42,7 +42,7 @@
    35,
    283
   ],
-  "seenFraction": 0.934,
+  "seenFraction": 0.914,
   "method": "inpaint",
   "backColor": "#564733",
   "file": "textures/pilar_izquierdo.jpg"
@@ -58,7 +58,7 @@
    786,
    1814
   ],
-  "seenFraction": 0.735,
+  "seenFraction": 0.732,
   "method": "inpaint",
   "backColor": "#534533",
   "file": "textures/pared_izquierda.jpg"
@@ -90,7 +90,7 @@
    795,
    135
   ],
-  "seenFraction": 0.713,
+  "seenFraction": 0.717,
   "method": "inpaint",
   "backColor": "#706d62",
   "file": "textures/escalones.jpg"
@@ -106,9 +106,9 @@
    993,
    634
   ],
-  "seenFraction": 0.59,
+  "seenFraction": 0.681,
   "method": "inpaint",
-  "backColor": "#665846",
+  "backColor": "#625443",
   "file": "textures/plataforma.jpg"
  },
  "arco_fondo": {
@@ -122,7 +122,7 @@
    995,
    1589
   ],
-  "seenFraction": 0.854,
+  "seenFraction": 0.858,
   "method": "inpaint",
   "backColor": "#5a4d39",
   "file": "textures/arco_fondo.jpg"
@@ -138,7 +138,7 @@
    1074,
    2048
   ],
-  "seenFraction": 0.662,
+  "seenFraction": 0.666,
   "method": "inpaint",
   "backColor": "#4d4432",
   "file": "textures/patio_fondo.jpg"
@@ -234,7 +234,7 @@
    258,
    471
   ],
-  "seenFraction": 0.654,
+  "seenFraction": 0.652,
   "method": "inpaint",
   "backColor": "#3c2d1b",
   "file": "textures/cuarto_fondo.jpg"
@@ -260,47 +260,47 @@
    -1.8055753749865118,
    -0.03673518938167675,
    -1.2300574080069067,
-   1.6326750836300858
+   1.6285933959210106
   ],
   "size": [
    126,
-   367
+   366
   ],
   "seenFraction": 0.992,
   "method": "inpaint",
-  "backColor": "#3d2d21",
+  "backColor": "#3b2b1f",
   "file": "textures/fraile.jpg"
  },
  "hombre_dorado": {
   "bounds": [
    0.14557765043721219,
-   0.5666399337714083,
-   1.0778223728462777,
-   2.404794781911317
+   0.6140422077922081,
+   1.0198862601541887,
+   2.415328620582606
   ],
   "size": [
-   205,
-   404
+   192,
+   396
   ],
-  "seenFraction": 0.995,
+  "seenFraction": 1.0,
   "method": "inpaint",
-  "backColor": "#483621",
+  "backColor": "#47341f",
   "file": "textures/hombre_dorado.jpg"
  },
  "puente_figuras": {
   "bounds": [
-   -1.2822389192898764,
+   -1.2760253172386558,
    7.554609546442783,
    0.047471919671325045,
-   8.561213078740515
+   8.468009047972206
   ],
   "size": [
-   292,
-   221
+   291,
+   200
   ],
   "seenFraction": 1.0,
   "method": "inpaint",
-  "backColor": "#45433b",
+  "backColor": "#403d34",
   "file": "textures/puente_figuras.jpg"
  },
  "puente_planta": {
@@ -362,25 +362,25 @@
    146,
    264
   ],
-  "seenFraction": 0.954,
+  "seenFraction": 0.95,
   "method": "inpaint",
   "backColor": "#423827",
   "file": "textures/emigdio.jpg"
  },
  "gabriel": {
   "bounds": [
-   -0.8571458713364953,
-   -0.10234783533990033,
+   -0.8617457740484008,
+   -0.13799708135716893,
    0.31352936884348775,
    1.2304739754347562
   ],
   "size": [
-   257,
-   293
+   258,
+   301
   ],
-  "seenFraction": 0.974,
+  "seenFraction": 0.972,
   "method": "inpaint",
-  "backColor": "#473220",
+  "backColor": "#463220",
   "file": "textures/gabriel.jpg"
  },
  "atril": {
@@ -404,11 +404,11 @@
    1.2603988207420174,
    0.024441333261536746,
    1.801163319153519,
-   1.2159563297614562
+   1.2312321630499166
   ],
   "size": [
    118,
-   262
+   265
   ],
   "seenFraction": 1.0,
   "method": "inpaint",

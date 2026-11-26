@@ -10,9 +10,11 @@ modelando sus colores con mezclas de gaussianas y cortando un grafo:
   - figura probable: dentro del ROI
   - figura segura:   el ROI erosionado (el centro del cuerpo)
 
-Opciones por figura en scene.json ("segment"): "core" fija la erosión del núcleo y
-"keepAbove" conserva el ROI por encima de esa fila (cabezas o cabellos que GrabCut
-confunde con el fondo).
+Opciones por figura en scene.json ("segment"): "core" fija la erosión del núcleo;
+"roiAs": "background" trata el ROI como fondo probable;
+"include" y "exclude" son polígonos (en píxeles) que se fuerzan como figura o como
+fondo, para las zonas donde GrabCut confunde colores (una cabeza contra un muro del
+mismo tono, la mano de Gabriel contra el piso, el cielo entre dos figuras).
 
 El contorno del resultado (simplificado a ~1,5 px) reemplaza al polígono; el
 original se conserva en "roi" para poder repetir el proceso. Si una silueta no
@@ -72,8 +74,22 @@ def segment(img, el):
     core = cv2.erode(roi, k(core_r))
     mask = np.full(roi.shape, cv2.GC_BGD, np.uint8)
     mask[dil > 0] = cv2.GC_PR_BGD
-    mask[roi > 0] = cv2.GC_PR_FGD
+    # Por defecto el ROI es "figura probable". Con "roiAs": "background" es "fondo
+    # probable": útil en figuras chicas cuyo ROI tiene mucho muro o cielo, donde la
+    # figura debe justificarse a partir del núcleo y de los polígonos "include".
+    mask[roi > 0] = cv2.GC_PR_BGD if opts.get("roiAs") == "background" else cv2.GC_PR_FGD
     mask[core > 0] = cv2.GC_FGD
+    # Polígonos trazados a mano sobre zonas que GrabCut confunde: "include" se fuerza
+    # como figura (cabezas, manos, el lirio) y "exclude" como fondo (cielo, muro).
+    local_poly = lambda poly: [[q[0] - x0, q[1] - y0] for q in poly]
+    forced_fg = np.zeros_like(roi)
+    for poly in opts.get("include", []):
+        forced_fg |= roi_mask(roi.shape, local_poly(poly), [])
+    forced_bg = np.zeros_like(roi)
+    for poly in opts.get("exclude", []):
+        forced_bg |= roi_mask(roi.shape, local_poly(poly), [])
+    mask[forced_fg > 0] = cv2.GC_FGD
+    mask[forced_bg > 0] = cv2.GC_BGD
 
     bgd, fgd = np.zeros((1, 65), np.float64), np.zeros((1, 65), np.float64)
     cv2.grabCut(crop, mask, None, bgd, fgd, 6, cv2.GC_INIT_WITH_MASK)
@@ -81,11 +97,8 @@ def segment(img, el):
     # Limpieza: cerrar grietas finas y quedarse con la componente principal
     fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, k(3))
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, k(2))
-    # Por encima de la fila "keepAbove" (cabezas, cabellos, aureolas) GrabCut confunde
-    # la figura con el fondo de color parecido: ahí se conserva el ROI trazado a mano.
-    if "keepAbove" in opts:
-        top = max(0, min(roi.shape[0], int(opts["keepAbove"]) - y0))
-        fg[:top] = np.maximum(fg[:top], roi[:top])
+    # Lo forzado se respeta también después de la limpieza morfológica.
+    fg = np.where(forced_fg > 0, 1, np.where(forced_bg > 0, 0, fg)).astype(np.uint8)
     n, lab, stats, _ = cv2.connectedComponentsWithStats(fg)
     if n > 1:
         main = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
@@ -123,6 +136,10 @@ def main():
     sheet = []
     for el in scene["elements"]:
         if el["kind"] != "figure" or (only and el["id"] not in only):
+            continue
+        # Una silueta corregida a mano en el marcador no se pisa (salvo que se pida por nombre).
+        if el.get("silhouette") == "manual" and el["id"] not in only:
+            print(f"{el['id']:16s} editada a mano: se conserva")
             continue
         if "roi" not in el:
             el["roi"] = el["polygon"]
