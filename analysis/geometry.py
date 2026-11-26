@@ -257,6 +257,11 @@ def main():
     calib['viewingDistanceCmRange'] = [round((f - focal_std) * px_cm, 1), round((f + focal_std) * px_cm, 1)]
     # La razón pie–horizonte / pie–cabeza cancela f para esta estimación.
     calib['eyeHeightFocalRangeM'] = [calib['eyeHeightM']] * 2
+    calib['eyeHeightByMethodM'] = {
+        'fraile': round(eye[0], 3),
+        'gabriel': round(eye[1], 3),
+        'baldosa': round(0.292 * (row0[0, 3] - cy) / tile_px, 3),
+    }
     if 'orthogonalZones' in data:
         by_zone = {key: [] for key in ZONE_COLORS}
         for segment, zone in zip(segments, data['orthogonalZones'], strict=True):
@@ -411,6 +416,15 @@ def write_report(c):
             x, y = row['vanishingPoint']
             lines.append(f"| {name} | {row['lines']} | ({x:.2f}; {y:.2f}) | {row['meanAngleDeg']:.3f} | "
                          f"{row['maxErrorPx']:.2f} | {row['meanAngleAgainstCalibrationDeg']:.3f} |")
+    heights = c['eyeHeightByMethodM']
+    lines.extend([
+        '', '## Validación cruzada de la escala', '',
+        f'- Solo con el fraile (1,65 m de pie): {heights["fraile"]:.3f} m.',
+        f'- Solo con Gabriel (1,20 m de rodillas): {heights["gabriel"]:.3f} m.',
+        f'- Solo con una baldosa de 29,2 cm (medio brazo florentino): {heights["baldosa"]:.3f} m.',
+        '', 'Cada prueba cambia la referencia métrica y usa el mismo horizonte. La baldosa introduce un '
+        'supuesto histórico alternativo, no una medida física del espacio pintado.',
+    ])
     (ROOT / "analysis" / "out" / "reporte.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 

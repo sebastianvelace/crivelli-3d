@@ -24,3 +24,11 @@ Las 33 rectas de referencia calibran el visor. El ajuste global ampliado incluye
 | logia | 5 | (774.18; 2264.16) | 0.149 | 11.12 | 0.599 |
 | cuarto maria | 6 | (811.91; 2263.97) | 0.525 | 29.40 | 0.722 |
 | piso | 4 | (793.98; 2121.02) | 0.657 | 36.23 | 1.613 |
+
+## Validación cruzada de la escala
+
+- Solo con el fraile (1,65 m de pie): 1.529 m.
+- Solo con Gabriel (1,20 m de rodillas): 1.497 m.
+- Solo con una baldosa de 29,2 cm (medio brazo florentino): 1.241 m.
+
+Cada prueba cambia la referencia métrica y usa el mismo horizonte. La baldosa introduce un supuesto histórico alternativo, no una medida física del espacio pintado.

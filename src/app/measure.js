@@ -14,14 +14,14 @@ import { HELPER_LAYER } from '../scene/perspectiveHelpers.js';
  * y el elemento sobre el cual se proyecta.
  */
 export const PRESETS = [
-  { name: 'Ancho de una baldosa', a: ['piso_calle', [404, 3890]], b: ['piso_calle', [786, 3890]] },
-  { name: 'Ancho de la calle', a: ['piso_calle', [128, 2900]], b: ['piso_calle', [1065, 2900]] },
-  { name: 'La Virgen, arrodillada', a: ['maria', [2143, 2576]], b: ['maria', [2143, 3770]] },
-  { name: 'Gabriel, arrodillado', a: ['gabriel', [620, 2530]], b: ['gabriel', [620, 3600]] },
-  { name: 'Hombre del manto dorado, de pie', a: ['hombre_dorado', [905, 2115]], b: ['hombre_dorado', [905, 2462]] },
-  { name: 'Profundidad del cuarto de María', a: ['cuarto_piso', [2200, 3860]], b: ['cuarto_piso', [2200, 3262]] },
-  { name: 'Alto del techo del cuarto', a: ['fachada_maria', [2200, 1740]], b: ['fachada_maria', [2200, 3890]] },
-  { name: 'Puente sobre la plataforma', a: ['arco_fondo', [700, 1294]], b: ['arco_fondo', [700, 2425]] },
+  { name: 'Ancho de una baldosa', kind: 'supuesto', a: ['piso_calle', [404, 3890]], b: ['piso_calle', [786, 3890]] },
+  { name: 'Ancho de la calle', kind: 'prediccion', a: ['piso_calle', [128, 2900]], b: ['piso_calle', [1065, 2900]] },
+  { name: 'La Virgen, arrodillada', kind: 'prediccion', a: ['maria', [2143, 2576]], b: ['maria', [2143, 3770]] },
+  { name: 'Gabriel, arrodillado', kind: 'supuesto', a: ['gabriel', [620, 2530]], b: ['gabriel', [620, 3600]] },
+  { name: 'Hombre del manto dorado, de pie', kind: 'prediccion', a: ['hombre_dorado', [905, 2115]], b: ['hombre_dorado', [905, 2462]] },
+  { name: 'Profundidad del cuarto de María', kind: 'prediccion', a: ['cuarto_piso', [2200, 3860]], b: ['cuarto_piso', [2200, 3262]] },
+  { name: 'Alto del techo del cuarto', kind: 'prediccion', a: ['fachada_maria', [2200, 1740]], b: ['fachada_maria', [2200, 3890]] },
+  { name: 'Puente sobre la plataforma', kind: 'prediccion', a: ['arco_fondo', [700, 1294]], b: ['arco_fondo', [700, 2425]] },
 ];
 
 export class MeasureTool {
@@ -102,10 +102,11 @@ export class MeasureTool {
   }
 
   showPreset(preset) {
-    this.add(this.lift(...preset.a), this.lift(...preset.b), preset.name);
+    if (this.items.some(({ name }) => name === preset.name)) return;
+    this.add(this.lift(...preset.a), this.lift(...preset.b), preset.name, preset.kind);
   }
 
-  add(a, b, name) {
+  add(a, b, name, kind) {
     const objects = [this.marker(a), this.marker(b)];
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), this.lineMat);
     line.renderOrder = 10;
@@ -117,10 +118,28 @@ export class MeasureTool {
     const dy = Math.abs(a.y - b.y);
     const div = document.createElement('div');
     div.className = 'measure-label';
-    div.innerHTML = (name ? `<span>${name}</span>` : '') + `<b>${fmt(d)}</b>` +
-      (dy > 0.05 && Math.abs(dy - d) > 0.03 ? ` <small>(vertical ${fmt(dy)})</small>` : '');
+    if (name) {
+      const title = document.createElement('span');
+      title.textContent = name;
+      div.appendChild(title);
+    }
+    const value = document.createElement('b');
+    value.textContent = fmt(d);
+    div.appendChild(value);
+    if (dy > 0.05 && Math.abs(dy - d) > 0.03) {
+      const vertical = document.createElement('small');
+      vertical.textContent = ` · vertical ${fmt(dy)}`;
+      div.appendChild(vertical);
+    }
+    if (kind) {
+      const metadata = document.createElement('small');
+      metadata.className = 'measure-kind';
+      metadata.textContent = kind === 'supuesto' ? 'Supuesto' : 'Predicción';
+      div.dataset.kind = kind;
+      div.appendChild(metadata);
+    }
     this.overlay.appendChild(div);
-    this.items.push({ a: a.clone(), b: b.clone(), objects, div });
+    this.items.push({ a: a.clone(), b: b.clone(), name, objects, div });
   }
 
   clear() {
@@ -134,20 +153,62 @@ export class MeasureTool {
     this.pending = null;
   }
 
-  /** Cada cuadro: coloca las etiquetas sobre el punto medio de cada medición. */
+  /** Ubica los rótulos cerca de su segmento y evita cruces cuando hay varias mediciones. */
   update() {
     this.reticle.hidden = !(this.enabled && this.viewer.mode === 'walk' && this.viewer.pointerLock.isLocked);
     const cam = this.viewer.camera;
     const w = this.viewer.renderer.domElement.clientWidth;
     const h = this.viewer.renderer.domElement.clientHeight;
+    const visible = [];
     for (const it of this.items) {
       const mid = it.a.clone().add(it.b).multiplyScalar(0.5);
-      const inFront = mid.clone().applyMatrix4(cam.matrixWorldInverse).z < 0;
       const p = mid.project(cam);
-      it.div.style.display = inFront ? '' : 'none';
-      it.div.style.transform = `translate(${((p.x + 1) / 2) * w}px, ${((1 - p.y) / 2) * h}px) translate(8px, -50%)`;
+      const inFrame = Math.abs(p.x) <= 1 && Math.abs(p.y) <= 1 && Math.abs(p.z) <= 1;
+      it.div.hidden = !inFrame;
+      if (inFrame) visible.push({ el: it.div, x: (p.x + 1) * w / 2, y: (1 - p.y) * h / 2 });
+    }
+    const sized = visible.map(({ el, x, y }) => ({ el, x, y, width: el.offsetWidth, height: el.offsetHeight }));
+    const placed = [];
+    for (const label of sized) {
+      const position = placeLabel(label, placed, w, h);
+      label.el.style.visibility = position ? '' : 'hidden';
+      if (!position) continue;
+      label.el.style.transform = `translate(${position.left}px, ${position.top}px)`;
+      placed.push(position);
     }
   }
+}
+
+function placeLabel(label, occupied, w, h) {
+  const { x, y, width, height } = label;
+  const pad = 7;
+  const gap = 5;
+  const right = w - width - pad;
+  const bottom = h - height - pad;
+  if (right < pad || bottom < pad) return null;
+
+  const preferredX = x + 8;
+  const preferredY = y - height / 2;
+  const xs = [preferredX, x - width - 8, pad, right];
+  const ys = [preferredY, pad, bottom];
+  for (const box of occupied) {
+    xs.push(box.right + gap, box.left - width - gap);
+    ys.push(box.bottom + gap, box.top - height - gap);
+  }
+  let best = null;
+  let distance = Infinity;
+  for (const candidateX of new Set(xs.map((p) => Math.min(right, Math.max(pad, p))))) {
+    for (const candidateY of new Set(ys.map((p) => Math.min(bottom, Math.max(pad, p))))) {
+      const rect = { left: candidateX, right: candidateX + width, top: candidateY, bottom: candidateY + height };
+      if (occupied.some((box) => rect.left < box.right + gap && rect.right > box.left - gap &&
+          rect.top < box.bottom + gap && rect.bottom > box.top - gap)) continue;
+      const score = 1.25 * (candidateX - preferredX) ** 2 + (candidateY - preferredY) ** 2;
+      if (score >= distance) continue;
+      best = rect;
+      distance = score;
+    }
+  }
+  return best;
 }
 
 const fmt = (m) => (m < 1 ? `${(m * 100).toFixed(0)} cm` : `${m.toFixed(2).replace('.', ',')} m`);

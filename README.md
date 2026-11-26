@@ -117,7 +117,18 @@ Es la idea central de la *single view metrology* de Criminisi: cada clic es un r
 | Alto del techo del cuarto | 2,03 m |
 | Puente sobre la plataforma | 7,23 m |
 
-**Hallazgo: la escala de Crivelli es coherente.** Calibrada solo con el fraile del fondo y con Gabriel, la reconstrucción da a la Virgen y a Gabriel la misma altura arrodillados (1,22 y 1,23 m), y al hombre del manto dorado, que está cuatro veces más lejos, una estatura plausible de pie (1,83 m). Crivelli no usa aquí la escala jerárquica medieval: las figuras sagradas obedecen la misma perspectiva que los transeúntes.
+Las etiquetas distinguen los **supuestos** de escala (Gabriel y la baldosa) y las **predicciones** del modelo. Los 36 cm de la baldosa que muestra el visor corresponden a la escala vigente. La validación usa 29,2 cm como un supuesto alternativo.
+
+## Validación cruzada
+
+| Referencia métrica | Altura del ojo |
+| --- | ---: |
+| Fraile de pie, 1,65 m | 1,529 m |
+| Gabriel arrodillado, 1,20 m | 1,497 m |
+| Baldosa de 29,2 cm, medio *braccio* florentino | 1,241 m |
+
+Las dos referencias humanas difieren en 3,2 cm y su media de **1,513 m** fija la escala del visor. Con medio *braccio*, la altura baja alrededor de un **18 %**, por lo que la escala absoluta es sensible al tamaño supuesto de la baldosa. Las tres estimaciones comparten el horizonte. María (1,22 m de rodillas) es una predicción condicionada a la escala. El hombre del manto dorado (1,83 m) y el fraile son personas distintas. La evidencia de inconsistencia geométrica está en la dispersión de las líneas de fuga.
+
 
 ### El museo y la ventana de Alberti (`src/scene/museum.js`)
 

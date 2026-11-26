@@ -74,6 +74,11 @@
     1.513,
     1.513
   ],
+  "eyeHeightByMethodM": {
+    "fraile": 1.529,
+    "gabriel": 1.497,
+    "baldosa": 1.241
+  },
   "globalPerspective": {
     "lines": 44,
     "vanishingPoint": [

@@ -287,11 +287,16 @@ body[data-mode='tour'][data-framing='stacked'] #hud :is(h2, p) { display: none; 
   border-radius: 3px;
   background: var(--shell);
   font: 0.82rem/1.25 var(--sans);
-  white-space: nowrap;
+  max-width: min(205px, 42vw);
 }
 
 .measure-label span { display: block; color: var(--shell-muted); font-size: 0.73rem; }
 .measure-label b { color: var(--shell-gold); }
+.measure-label .measure-kind {
+  display: block;
+  color: var(--shell-muted);
+  font-size: 0.68rem;
+}
 #reticle {
   position: absolute;
   top: 50%;
