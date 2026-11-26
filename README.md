@@ -275,7 +275,7 @@ La calle izquierda y la fachada convergen localmente cerca de la misma altura en
 
 Las cuatro diagonales dan una focal de **2266,45 ± 71,16 px** (media y desviación estándar muestral). Ese margen da **107,3–114,3 cm** de distancia de observación. La altura de **1,513 m** calculada a partir de las figuras queda fija al variar solo la focal, porque esta se cancela en la razón de alturas.
 
-![Ortogonal y ajustes por zonas](docs/16_consistencia_por_zonas.png)
+![Ortogonales y ajustes por zonas](docs/16_consistencia_por_zonas.png)
 
 ## Supuestos y decisiones
 
