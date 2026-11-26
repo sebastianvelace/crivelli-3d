@@ -97,6 +97,8 @@ Al etiquetar la escena aparecieron dos inconsistencias, que se corrigieron:
 
 Los recortes de las figuras empezaron como polígonos trazados a mano (de 6 a 49 vértices), que arrastraban fondo: la franja del pilar detrás de Gabriel, el piso entre sus alas. Ahora cada polígono a mano es solo la región de interés (`roi`) con la que se inicializa **GrabCut** (OpenCV), que separa figura y fondo modelando sus colores y cortando un grafo. El contorno resultante, simplificado a 1,5 px, reemplaza al polígono (hasta 362 vértices en Gabriel). No necesita descargar ningún modelo. Lo que GrabCut no resuelva (por ejemplo, el niño arrastra un poco del muro blanco) se corrige con el editor del marcador. `docs/11_siluetas.jpg` muestra cada resultado junto a su ROI.
 
+**Versión final:** las diez siluetas se corrigieron a mano en el editor del marcador, partiendo del resultado de GrabCut (entre 49 y 879 vértices por figura). Quedan marcadas como `"silhouette": "manual"`, así que `segment.py` ya no las sobrescribe salvo que se le pida una figura por nombre.
+
 ```bash
 .venv/bin/python analysis/segment.py && .venv/bin/python analysis/infer.py
 ```
