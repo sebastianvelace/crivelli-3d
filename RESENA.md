@@ -23,7 +23,7 @@ Mostrar que una pintura renacentista en perspectiva no es solo una imagen: es un
 ## Fuentes
 
 - A. Criminisi, I. Reid y A. Zisserman, «Single View Metrology», *International Journal of Computer Vision* 40(2), 2000.
-- A. Criminisi, M. Kemp y A. Zisserman, «Bringing Pictorial Space to Life: Computer Techniques for the Analysis of Paintings», 2003.
+- A. Criminisi, M. Kemp y A. Zisserman, «Bringing Pictorial Space to Life: Computer Techniques for the Analysis of Paintings», Proceedings of Computers and the History of Art (CHArt 2002), Londres, 2002.
 - Y. Horry, K. Anjyo y K. Arai, «Tour Into the Picture», *SIGGRAPH* 1997.
 - M. Kemp, *The Science of Art*, Yale University Press, 1990.
 - E. Panofsky, *Galileo as a Critic of the Arts*, Martinus Nijhoff, 1954.
