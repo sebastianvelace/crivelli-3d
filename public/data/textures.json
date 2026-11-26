@@ -26,31 +26,15 @@
    795,
    2048
   ],
-  "seenFraction": 0.313,
+  "seenFraction": 0.324,
   "method": "neutral",
-  "backColor": "#635847",
+  "backColor": "#625646",
   "file": "textures/piso_calle.jpg"
- },
- "pilar_izquierdo": {
-  "bounds": [
-   -1.1450230280774234,
-   0.0,
-   -0.985863438145513,
-   1.2877457730854565
-  ],
-  "size": [
-   35,
-   283
-  ],
-  "seenFraction": 0.922,
-  "method": "inpaint",
-  "backColor": "#564734",
-  "file": "textures/pilar_izquierdo.jpg"
  },
  "pared_izquierda": {
   "bounds": [
    -8.24946798017706,
-   0.0,
+   -1.1038674965213602e-06,
    -4.673892367054421,
    8.246315000544959
   ],
@@ -58,9 +42,9 @@
    786,
    1814
   ],
-  "seenFraction": 0.748,
+  "seenFraction": 0.754,
   "method": "inpaint",
-  "backColor": "#534533",
+  "backColor": "#534634",
   "file": "textures/pared_izquierda.jpg"
  },
  "pared_derecha": {

@@ -22,26 +22,10 @@
         "type": "horizontal",
         "y": 0
       },
-      "polygon": [[0, 3890], [1570, 3890], [1050, 2580], [343, 2580], [343, 2700], [110, 2916], [110, 3330], [0, 3330]],
+      "polygon": [[0, 3890], [1570, 3890], [1050, 2580], [343, 2580], [343, 2700], [110, 2916], [0, 3018]],
       "evidence": "measured",
       "note": "Plano y = 0 de la calle; escala fijada por la altura del ojo.",
       "fill": "neutral"
-    },
-    {
-      "id": "pilar_izquierdo",
-      "label": "Pilar de ladrillo (primer plano)",
-      "kind": "architecture",
-      "plane": {
-        "type": "frontal",
-        "anchor": {
-          "on": "ground",
-          "px": [60, 3330]
-        }
-      },
-      "polygon": [[0, 2440], [110, 2440], [110, 3330], [0, 3330]],
-      "evidence": "measured",
-      "note": "Base del pilar sobre el piso.",
-      "fill": "inpaint"
     },
     {
       "id": "pared_izquierda",
@@ -54,7 +38,7 @@
           "px": [343, 2700]
         }
       },
-      "polygon": [[0, -300], [165, -300], [165, 1140], [343, 1290], [343, 2700], [110, 2916], [110, 2440], [0, 2440]],
+      "polygon": [[0, -300], [165, -300], [165, 1140], [343, 1290], [343, 2700], [110, 2916], [0, 3018]],
       "evidence": "measured",
       "note": "Base de la pared sobre el piso.",
       "fill": "inpaint"
