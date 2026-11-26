@@ -90,7 +90,7 @@ body {
 }
 
 #caption {
-  bottom: 56px;
+  bottom: 120px;
   font-family: Georgia, serif;
   font-size: 18px;
   opacity: 0;
@@ -176,4 +176,33 @@ body {
 
 #legend .sw.assumed {
   border-top: 2px dashed #ffb000;
+}
+
+#measures {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+.measure-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: rgba(10, 8, 6, 0.8);
+  border: 1px solid #ffd400;
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.measure-label span {
+  display: block;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
+.measure-label b {
+  color: #ffd400;
 }

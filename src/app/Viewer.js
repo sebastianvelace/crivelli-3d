@@ -5,6 +5,7 @@ import { PictureSpace, resolvePlanes, buildElementGeometry } from '../core/pictu
 import { createProjectiveMaterial, createSharedUniforms, FILL_MODES } from '../core/projectiveMaterial.js';
 import { createPainterCamera, VisitorCamera } from '../core/cameras.js';
 import { createPerspectiveHelpers, createEyeMarker, HELPER_LAYER } from '../scene/perspectiveHelpers.js';
+import { createMuseum, MUSEUM_LAYER } from '../scene/museum.js';
 
 const PAINTER_NEAR = 0.3;
 const PAINTER_FAR = 200;
@@ -12,6 +13,7 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) 
 
 /**
  * Visor principal. Modos:
+ *   'museum'-> en la sala, frente al cuadro colgado (punto de partida).
  *   'eye'   -> en el ojo de Crivelli; la escena coincide con la pintura.
  *   'walk'  -> primera persona (WASD + mouse con PointerLock).
  *   'orbit' -> órbita libre alrededor de la calle.
@@ -22,7 +24,8 @@ export class Viewer {
     this.container = container;
     this.calib = calibration;
     this.space = new PictureSpace(calibration);
-    this.mode = 'eye';
+    this.mode = 'museum';
+    this.windowOpen = false; // ¿el cuadro ya se volvió ventana?
     this.listeners = new Set();
     this.animation = null;
     this.keys = new Set();
@@ -41,6 +44,7 @@ export class Viewer {
     this.camera = new VisitorCamera(this.space);
     this.camera.position.copy(this.space.eye);
     this.camera.layers.enable(HELPER_LAYER);
+    this.camera.layers.enable(MUSEUM_LAYER);
 
     // Mapa de profundidad visto desde el ojo (para detectar zonas ocultas)
     const rtW = 1400;
@@ -57,6 +61,9 @@ export class Viewer {
 
     this.buildPicture(sceneData, inferred);
     this.buildHelpers(paintingTexture);
+    this.museum = createMuseum(this.space, calibration, paintingTexture);
+    this.scene.add(this.museum.group);
+    this.panelOpacity = 1;
     this.renderDepth();
 
     // Controles
@@ -64,9 +71,13 @@ export class Viewer {
     this.orbit.enabled = false;
     this.orbit.enableDamping = true;
     this.pointerLock = new PointerLockControls(this.camera, this.renderer.domElement);
-    // OrbitControls reorienta la cámara hacia su target al crearse: restauramos el ojo.
-    this.camera.position.copy(this.space.eye);
-    this.camera.quaternion.identity();
+    // OrbitControls reorienta la cámara hacia su target al crearse: fijamos la pose
+    // inicial después. Se empieza en el museo, de pie frente al cuadro.
+    const start = this.museum.startPose;
+    this.camera.position.copy(start.position);
+    this.camera.quaternion.copy(lookQuaternion(start.position, start.target));
+    this.camera.painterness = 0;
+    this.camera.freeFov = 60;
     this.renderer.domElement.addEventListener('click', () => {
       if (this.mode === 'walk' && !this.animation) this.pointerLock.lock();
     });
@@ -112,7 +123,7 @@ export class Viewer {
       this.evidenceEdges.add(edges);
     }
     this.scene.add(this.pictureGroup, this.evidenceEdges);
-    this.setFillMode('inferido');
+    this.setFillMode('neutro');
 
     // Suelo neutro "infinito" (solo visual, fuera de la proyección). Se dibuja
     // primero y sin escribir profundidad: es un fondo, nunca tapa a la escena.
@@ -196,11 +207,37 @@ export class Viewer {
     this.setMode('transition');
     this.animateTo(
       { position: this.space.eye.clone(), quaternion: new THREE.Quaternion(), painterness: 1, fov: 70, duration },
-      () => this.setMode('eye'),
+      () => {
+        this.setMode('eye');
+        // Desde aquí el cuadro puede volverse transparente sin que la imagen cambie.
+        if (!this.windowOpen) {
+          this.windowOpen = true;
+          this.onWindowOpened?.();
+        }
+      },
+    );
+  }
+
+  /** Volver a la sala: el cuadro vuelve a ser un objeto colgado en la pared. */
+  enterMuseum() {
+    this.stopTour?.();
+    const { position, target } = this.museum.startPose;
+    this.setMode('transition');
+    this.animateTo(
+      { position: position.clone(), quaternion: lookQuaternion(position, target), painterness: 0, fov: 60, duration: 3 },
+      () => {
+        this.windowOpen = false;
+        this.setMode('museum');
+      },
     );
   }
 
   enterWalk() {
+    // Desde la sala se camina en el lugar (hasta la marca del ojo, por ejemplo).
+    if (this.mode === 'museum') {
+      this.setMode('walk');
+      return;
+    }
     const target = this.space.eye.clone().add(new THREE.Vector3(0, 0, -1.6));
     this.setMode('transition');
     this.animateTo(
@@ -298,6 +335,16 @@ export class Viewer {
     } else if (this.orbit.enabled) {
       this.orbit.update();
     }
+
+    // El panel del museo: opaco mientras es un cuadro; transparente cuando es ventana
+    // (o cuando alguien lo atraviesa caminando).
+    const crossing = this.camera.position.z < -this.museum.windowDistance + 0.25;
+    const target = this.windowOpen || crossing ? 0 : 1;
+    this.panelOpacity += (target - this.panelOpacity) * Math.min(1, dt * 1.6);
+    if (Math.abs(target - this.panelOpacity) < 0.002) this.panelOpacity = target;
+    this.museum.setPanelOpacity(this.panelOpacity);
+    // En órbita y maqueta la sala taparía la calle: se oculta.
+    this.museum.group.visible = this.mode !== 'orbit' && this.mode !== 'model';
 
     // Perspectiva aérea: solo fuera del ojo (en el ojo manda la pintura).
     this.uniforms.uFogAmount.value = (this.fogStrength ?? 0) * (1 - this.camera.painterness);

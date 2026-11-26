@@ -1,6 +1,10 @@
 # Crivelli 3D: entrar en la *Anunciación con san Emigdio*
 
-Reconstrucción 3D recorrible de *La Anunciación con san Emigdio* de Carlo Crivelli (1486, National Gallery, Londres, NG739) a partir de la geometría de su perspectiva. La página abre mostrando exactamente la pintura, vista desde el punto de vista calculado del pintor. Desde ahí se puede entrar a la calle y recorrerla. El botón **«Volver al ojo de Crivelli»** devuelve la cámara a ese punto, y el espacio vuelve a convertirse en la pintura.
+Reconstrucción 3D recorrible de *La Anunciación con san Emigdio* de Carlo Crivelli (1486, National Gallery, Londres, NG739) a partir de la geometría de su perspectiva.
+
+La página abre en una sala de museo, con el cuadro colgado a su tamaño real. En el piso hay una marca: el punto exacto donde estaba el ojo del pintor, calculado a partir de la pintura. El botón **«Volver al ojo de Crivelli»** lleva la cámara hasta ahí. Desde ese punto el cuadro se vuelve transparente y la imagen no cambia, porque detrás hay un espacio 3D que proyecta exactamente la pintura. Después se puede entrar a la calle, recorrerla, medirla y volver al ojo, donde el espacio vuelve a convertirse en la pintura.
+
+Demo: <https://crivelli-3d.vercel.app/>
 
 Es el trabajo final de la electiva *Galileo* (Universidad Nacional de Colombia, Bogotá). Autor: **Sebastian Velandia Acevedo**.
 
@@ -18,15 +22,18 @@ npm run dev
 ```
 
 - Visor: `http://localhost:5173/`
-- Herramienta para marcar líneas: `http://localhost:5173/analysis/marcador.html`
+- Marcador: `http://localhost:5173/analysis/marcador.html`. Tiene dos modos: *Líneas de fuga* y *Polígonos de la escena*. El segundo es un editor: arrastrar vértices, clic en una arista para agregar uno, `Alt`+clic para borrarlo.
 
 | Control | Acción |
 | --- | --- |
 | Panel → *Volver al ojo de Crivelli* (o tecla `R`) | Anima la cámara de regreso al punto de vista del pintor |
+| *Volver al museo* | Vuelve a la sala: el cuadro es otra vez un objeto colgado |
 | *Entrar y caminar* | Primera persona: clic para mirar con el mouse, `WASD` para moverse, `Shift` para correr, `Q`/`E` para bajar o subir, `Esc` para soltar el mouse |
 | *Modo órbita* | Girar, acercar y desplazar con el mouse |
 | *Modo maqueta* | Vista casi axonométrica de toda la reconstrucción |
-| *Comprobar la geometría* | Superponer la pintura (con opacidad), líneas y punto de fuga en 3D, planta reconstruida, zonas ocultas |
+| *Lo que Crivelli no pintó* | Modo fiel, neutro (por defecto) o inferido; marcar lo inferido; aristas medido/supuesto |
+| *Medir* | Dos clics sobre la escena dan una distancia en metros; también hay mediciones sugeridas |
+| *Comprobar la geometría* | Superponer la pintura (con opacidad), líneas y punto de fuga en 3D, planta reconstruida |
 | *Extras* | Perspectiva aérea según Leonardo, recorrido guiado de unos 60 s, captura PNG |
 
 ### Publicar gratis
@@ -63,17 +70,16 @@ Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la 
 | Modo | Qué se ve donde no hay pintura |
 | --- | --- |
 | **Fiel al cuadro** | Nada: el fragmento se descarta y se ve el hueco de información. Además se dibujan las aristas de cada plano: blanco si su posición se **midió** en la pintura, ámbar discontinuo si es un **supuesto** (por ejemplo, la logia a 1,5 m de la fachada). |
-| **Neutro (yeso)** | Un color neutro, sin textura inventada (el comportamiento del MVP). |
-| **Inferido** | Una textura horneada offline por `analysis/infer.py`. *Marcar lo inferido* la cubre con un rayado rosa. |
+| **Neutro (yeso)** — por defecto | Un color neutro, sin textura inventada. |
+| **Inferido** | Una textura horneada offline por `analysis/infer.py` (inpainting en muros y fondos; el piso queda neutro). *Marcar lo inferido* la cubre con un rayado rosa. |
 
 Cada elemento de `scene.json` lleva:
 - `evidence`: `measured` o `assumed`, con una `note` que explica el supuesto.
 - `fill`: la regla para completar lo oculto en el modo inferido.
 
-La inferencia tiene dos niveles, a propósito:
+**Un intento descartado: la regla de las baldosas.** Se probó completar el piso oculto repitiendo una baldosa real rectificada, con su tamaño medido (36 cm), una de las 8 simetrías del cuadrado en cada celda y las juntas dibujadas por regla. La geometría era correcta, pero el tono de la baldosa repetida no coincide con el piso pintado, porque Crivelli sombrea el piso de manera continua. El resultado: al caminar se veía el contorno de cada figura dibujado en el piso. Una regla geométrica correcta no alcanza si la *apariencia* no sigue la misma regla, así que el piso volvió a quedar neutro. El código sigue en `infer.py` (`fill: "tiles"`) para documentar el experimento.
 
-1. **Por regla (la más defendible).** En el piso de la calle, lo oculto repite una baldosa **real** rectificada, sin figuras encima, con el tamaño medido (36 cm). En cada celda se usa una de las 8 simetrías del cuadrado (el mármol no tiene orientación) y las juntas se dibujan con su ancho y color medidos. Es la misma lógica de una hipótesis *ex suppositione*: una regla observada aplicada donde no hay datos.
-2. **Por continuidad (inpainting).** El resto se rellena con *Frequency Selective Reconstruction* (OpenCV xphoto), que reconstruye textura y no solo color, a partir de lo visto en el mismo plano. Lejos de los datos (más de ~0,5 m) el relleno se funde con el color medio del elemento: ahí cualquier detalle sería inventado.
+El modo inferido rellena el resto **por continuidad (inpainting)**: El resto se rellena con *Frequency Selective Reconstruction* (OpenCV xphoto), que reconstruye textura y no solo color, a partir de lo visto en el mismo plano. Lejos de los datos (más de ~0,5 m) el relleno se funde con el color medio del elemento: ahí cualquier detalle sería inventado.
 
 **Cómo se sabe qué vio el pintor.** `infer.py` calcula un z-buffer analítico en la imagen: cada elemento es un plano, así que la profundidad de cada píxel sale de cortar su rayo con el plano. Un texel de un elemento está «visto» si, proyectado a la pintura, no hay otro elemento más cerca del ojo. Es el mismo criterio que usa el shader en tiempo real.
 
@@ -82,6 +88,44 @@ La lámina `docs/07_mascaras_de_evidencia.jpg` muestra, para cada elemento, qué
 Al etiquetar la escena aparecieron dos inconsistencias, que se corrigieron:
 - **Muro derecho:** su borde lejano tapaba al hombre del manto dorado y a la maceta del puente. Se recortó donde empieza el puente.
 - **Balcón izquierdo:** las figuras del balcón quedaban detrás del propio muro. Se adelantaron 1,1 m, porque el balcón sobresale, y quedaron marcadas como supuesto.
+
+---
+
+## Siluetas, medición y museo
+
+### Siluetas con GrabCut (`analysis/segment.py`)
+
+Los recortes de las figuras empezaron como polígonos trazados a mano (de 6 a 49 vértices), que arrastraban fondo: la franja del pilar detrás de Gabriel, el piso entre sus alas. Ahora cada polígono a mano es solo la región de interés (`roi`) con la que se inicializa **GrabCut** (OpenCV), que separa figura y fondo modelando sus colores y cortando un grafo. El contorno resultante, simplificado a 1,5 px, reemplaza al polígono (hasta 362 vértices en Gabriel). No necesita descargar ningún modelo. Lo que GrabCut no resuelva (por ejemplo, el niño arrastra un poco del muro blanco) se corrige con el editor del marcador. `docs/11_siluetas.jpg` muestra cada resultado junto a su ROI.
+
+```bash
+.venv/bin/python analysis/segment.py && .venv/bin/python analysis/infer.py
+```
+
+### Medir dentro de la pintura
+
+Es la idea central de la *single view metrology* de Criminisi: cada clic es un rayo que corta el plano del elemento que toca, así que dos clics dan una distancia en metros. Desde el ojo de Crivelli equivale a medir **sobre la pintura**. Mediciones sugeridas (`src/app/measure.js`):
+
+| Medición | Resultado |
+| --- | --- |
+| Ancho de una baldosa | 36 cm |
+| Ancho de la calle | 2,30 m |
+| La Virgen, arrodillada | 1,22 m |
+| Gabriel, arrodillado | 1,23 m |
+| Hombre del manto dorado, de pie (a 12 m del ojo) | 1,83 m |
+| Profundidad del cuarto de María | 1,57 m |
+| Alto del techo del cuarto | 2,03 m |
+| Puente sobre la plataforma | 7,23 m |
+
+**Hallazgo: la escala de Crivelli es coherente.** Calibrada solo con el fraile del fondo y con Gabriel, la reconstrucción da a la Virgen y a Gabriel la misma altura arrodillados (1,22 y 1,23 m), y al hombre del manto dorado, que está cuatro veces más lejos, una estatura plausible de pie (1,83 m). Crivelli no usa aquí la escala jerárquica medieval: las figuras sagradas obedecen la misma perspectiva que los transeúntes.
+
+### El museo y la ventana de Alberti (`src/scene/museum.js`)
+
+El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. Mide 146,5 cm de ancho, está a 111 cm del ojo y tiene el punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. Desde la calle, mirando hacia atrás, se ve la sala a través del marco. En órbita y maqueta la sala se oculta para no tapar la escena.
+
+| | |
+| --- | --- |
+| ![Museo](docs/12_museo.png) | ![Mediciones](docs/13_mediciones.png) |
+| ![Silueta de Gabriel](docs/14_gabriel_silueta.png) | ![Desde la calle al museo](docs/15_desde_la_calle_al_museo.png) |
 
 ---
 
@@ -226,6 +270,8 @@ analysis/
   out/reporte.md              resumen numérico
   scene3d.py                  la geometría de la escena en Python (igual que pictureSpace.js)
   infer.py                    modo inferido: z-buffer, texturas planas, regla de baldosas e inpainting
+  segment.py                  siluetas de las figuras con GrabCut
+  polygonEditor.js            editor de polígonos del marcador
 public/
   data/calibration.json       resultado del análisis (lo lee la escena)
   data/scene.json             polígonos y planos de la reconstrucción
@@ -240,6 +286,8 @@ src/
   scene/perspectiveHelpers.js ventana de Alberti, ortogonales, puntos de distancia
   app/Viewer.js               modos (ojo, caminar, órbita, maqueta) y animaciones
   app/tour.js                 recorrido guiado
+  app/measure.js              herramienta de medición y mediciones sugeridas
+  scene/museum.js             sala de museo con el cuadro como ventana de Alberti
   main.js, style.css          panel lil-gui y superposiciones HTML
 docs/                         capturas para la presentación
 RESENA.md                     reseña de una página (objetivo y relación con Galileo)
@@ -259,9 +307,12 @@ RESENA.md                     reseña de una página (objetivo y relación con G
 | 6. Controles, «Volver al ojo» y panel | 2 | ✅ |
 | 7. README, RESENA y capturas | 1,5 | ✅ |
 | 8. Extras: perspectiva aérea y recorrido guiado | 1 | ✅ (básicos) |
-| 9. Modos fiel e inferido (evidencia, regla de baldosas, inpainting) | 4 | ✅ |
+| 9. Modos fiel, neutro e inferido (evidencia, inpainting) | 4 | ✅ |
+| 10. Siluetas con GrabCut y editor de polígonos | 2 | ✅ |
+| 11. Herramienta de medición | 2 | ✅ |
+| 12. Museo y ventana de Alberti | 3 | ✅ |
 
-**Mejoras posibles:** recortar las figuras con máscaras de píxeles (por ejemplo, con Segment Anything) en lugar de polígonos, darles relieve con un mapa de profundidad (Depth Anything V2), una regla de ladrillos para los muros, modelar los escalones uno por uno, darle volumen al balcón y a la cornisa,.
+**Mejoras posibles:** darle volumen a la arquitectura (pilastras, cornisa, balcón, escalones uno por uno) modelándola a mano, por ejemplo en Blender con la cámara calibrada; darles relieve a las figuras con un mapa de profundidad (Depth Anything V2); y controles táctiles para celular.
 
 ---
 

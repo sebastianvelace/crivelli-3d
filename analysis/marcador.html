@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="author" content="Sebastian Velandia Acevedo" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <title>Marcador de líneas de fuga · Crivelli 3D</title>
     <style>
       body { margin: 0; font-family: system-ui, sans-serif; background: #1b1814; color: #eee; display: flex; height: 100vh; }
@@ -12,23 +13,41 @@
       #side textarea { width: 100%; height: 160px; font-size: 11px; }
       #wrap { flex: 1; overflow: hidden; position: relative; cursor: crosshair; }
       canvas { position: absolute; left: 0; top: 0; }
+      body.poly .lines-only, body:not(.poly) .poly-only { display: none; }
       .stat { background: #111; padding: 8px; border-radius: 4px; margin: 8px 0; line-height: 1.5; }
       kbd { background: #444; padding: 0 4px; border-radius: 3px; }
     </style>
   </head>
   <body>
     <div id="side">
-      <h1>Marcador de líneas</h1>
-      <p>
+      <h1>Marcador</h1>
+      <label>Modo</label>
+      <select id="mode">
+        <option value="lines">Líneas de fuga</option>
+        <option value="poly">Polígonos de la escena</option>
+      </select>
+      <p class="lines-only">
         Clic en los dos extremos de cada línea. Rueda: zoom. Arrastre con clic derecho: mover.
         <kbd>Z</kbd> deshace la última.
       </p>
+      <p class="poly-only">
+        Arrastrá un vértice para moverlo · clic en una arista para agregar uno · <kbd>Alt</kbd>+clic o
+        <kbd>Supr</kbd> para borrarlo. Rueda: zoom · clic derecho: mover. Punteado amarillo: el ROI original.
+      </p>
+      <div class="poly-only">
+        <label>Elemento</label>
+        <select id="element"></select>
+        <button id="restore">Restaurar el polígono original (ROI)</button>
+        <button id="export-scene">Exportar scene.json (descarga)</button>
+        <p>Guardalo como <code>public/data/scene.json</code> y corré <code>python analysis/infer.py</code>.</p>
+      </div>
+      <div class="stat" id="stats">Cargando…</div>
+      <div class="lines-only">
       <label>Tipo de línea</label>
       <select id="kind">
         <option value="orthogonals">Ortogonal (fuga al punto central)</option>
         <option value="diagonals">Diagonal de baldosa (punto de distancia)</option>
       </select>
-      <div class="stat" id="stats">Cargando…</div>
       <button id="load">Cargar analysis/data/lines.json</button>
       <button id="export">Exportar JSON (descarga)</button>
       <button id="clear">Borrar todas las líneas de este tipo</button>
@@ -36,6 +55,7 @@
       <textarea id="json" spellcheck="false"></textarea>
       <p>Después de exportar: guarda el archivo como <code>analysis/data/lines.json</code> y ejecuta
         <code>python analysis/geometry.py</code>.</p>
+      </div>
     </div>
     <div id="wrap"><canvas id="cv"></canvas></div>
     <script type="module" src="./marcador.js"></script>

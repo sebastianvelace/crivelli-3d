@@ -10,8 +10,10 @@ Pasos:
      lleva a 3D, se proyecta a la pintura y se marca como "visto" si ningún otro
      elemento lo tapaba desde el ojo.
   3. Lo no visto se rellena con una regla, si la hay, o con inpainting:
-       - 'tiles':   piso de la calle. Se repite la baldosa real rectificada, con
-                    el tamaño medido (inferencia por regla, la más defendible).
+       - 'neutral': color yeso, sin inventar nada (el piso de la calle).
+       - 'tiles':   repetir la baldosa real rectificada con su tamaño medido.
+                    Se probó en el piso y se descartó: el tono de la baldosa
+                    repetida no coincide con el piso pintado y se ve el borde.
        - 'inpaint': todo lo demás. Inpainting por mapas de desplazamiento
                     (OpenCV xphoto, shift-map), que copia textura vecina.
 
@@ -180,7 +182,9 @@ def bake_element(space, el, plane, painting, zbuf, k, tiles):
     known = seen & inside
     frac = float(known.sum() / max(inside.sum(), 1))
     method = el.get("fill", "inpaint")
-    if method == "tiles":
+    if method == "neutral":
+        color[~seen] = (201, 187, 162)  # mismo color yeso que el modo neutro
+    elif method == "tiles":
         X = P[..., 0]
         fill = tiles(X, D)
         color[~seen] = fill[~seen]

@@ -7,6 +7,7 @@
  * (misma matemática que analysis/geometry.py, en versión compacta).
  */
 import linesUrl from './data/lines.json?url';
+import { createPolygonEditor } from './polygonEditor.js';
 
 const ORIGINAL = { width: 2996, height: 4226 };
 const cv = document.getElementById('cv');
@@ -15,10 +16,13 @@ const wrap = document.getElementById('wrap');
 const kindSel = document.getElementById('kind');
 const stats = document.getElementById('stats');
 const jsonBox = document.getElementById('json');
+const modeSel = document.getElementById('mode');
+const elementSel = document.getElementById('element');
+const BASE = import.meta.env.DEV ? '/' : '../';
 
 const img = new Image();
 // En el build (base './') esta página vive en /analysis/, así que la imagen está un nivel arriba.
-img.src = (import.meta.env.DEV ? '/' : '../') + 'painting/crivelli_ng739_2048.jpg';
+img.src = BASE + 'painting/crivelli_ng739_2048.jpg';
 
 let data = { image: { file: 'analysis/source/crivelli_ng739.jpg', ...ORIGINAL }, orthogonals: [], diagonals: [] };
 let pending = null; // primer extremo de la línea en curso
@@ -75,6 +79,8 @@ function invert3(m) {
 
 const toScreen = (x, y) => [view.x + x * view.scale, view.y + y * view.scale];
 const toImage = (sx, sy) => [(sx - view.x) / view.scale, (sy - view.y) / view.scale];
+const editor = createPolygonEditor({ ctx, toScreen, onChange: () => draw() });
+const polyMode = () => modeSel.value === 'poly';
 
 function draw() {
   cv.width = wrap.clientWidth;
@@ -84,6 +90,11 @@ function draw() {
   if (img.complete) {
     const [x0, y0] = toScreen(0, 0);
     ctx.drawImage(img, x0, y0, ORIGINAL.width * view.scale, ORIGINAL.height * view.scale);
+  }
+  if (polyMode()) {
+    editor.draw();
+    stats.innerHTML = editor.stats();
+    return;
   }
   const vp = vanishingPoint(data.orthogonals);
   const seg = (s, color, w) => {
@@ -134,6 +145,11 @@ cv.addEventListener('mousedown', (e) => {
   }
   const r = cv.getBoundingClientRect();
   const p = toImage(e.clientX - r.left, e.clientY - r.top).map((v) => Math.round(v * 10) / 10);
+  if (polyMode()) {
+    editor.onDown(p, e, view.scale);
+    draw();
+    return;
+  }
   if (!pending) pending = p;
   else {
     data[kindSel.value].push([...pending, ...p]);
@@ -142,12 +158,21 @@ cv.addEventListener('mousedown', (e) => {
   draw();
 });
 window.addEventListener('mousemove', (e) => {
+  if (polyMode() && !drag) {
+    const r = cv.getBoundingClientRect();
+    editor.onMove(toImage(e.clientX - r.left, e.clientY - r.top), view.scale);
+    draw();
+    return;
+  }
   if (!drag) return;
   view.x = e.clientX - drag.x;
   view.y = e.clientY - drag.y;
   draw();
 });
-window.addEventListener('mouseup', () => (drag = null));
+window.addEventListener('mouseup', () => {
+  drag = null;
+  editor.onUp();
+});
 cv.addEventListener('wheel', (e) => {
   e.preventDefault();
   const r = cv.getBoundingClientRect();
@@ -158,6 +183,10 @@ cv.addEventListener('wheel', (e) => {
   draw();
 }, { passive: false });
 window.addEventListener('keydown', (e) => {
+  if (polyMode()) {
+    editor.onKey(e.key);
+    return;
+  }
   if (e.key.toLowerCase() === 'z') {
     pending ? (pending = null) : data[kindSel.value].pop();
     draw();
@@ -191,4 +220,31 @@ jsonBox.addEventListener('change', () => {
 img.onload = () => {
   view.scale = Math.min(wrap.clientWidth / ORIGINAL.width, wrap.clientHeight / ORIGINAL.height) * 0.95;
   document.getElementById('load').click();
+};
+
+// ---------------------------------------------------------------- modo polígonos
+
+async function loadScene() {
+  const scene = await (await fetch(BASE + 'data/scene.json')).json();
+  editor.setScene(scene);
+  elementSel.innerHTML = scene.elements
+    .map((el) => `<option value="${el.id}">${el.kind === 'figure' ? '● ' : ''}${el.label}</option>`)
+    .join('');
+  elementSel.value = editor.selected;
+  draw();
+}
+
+modeSel.addEventListener('change', () => {
+  document.body.classList.toggle('poly', polyMode());
+  pending = null;
+  if (polyMode() && !editor.getScene()) loadScene();
+  draw();
+});
+elementSel.addEventListener('change', () => editor.select(elementSel.value));
+document.getElementById('restore').onclick = () => editor.restoreRoi();
+document.getElementById('export-scene').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([JSON.stringify(editor.getScene(), null, 2)], { type: 'application/json' }));
+  a.download = 'scene.json';
+  a.click();
 };

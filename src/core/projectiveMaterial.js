@@ -114,7 +114,7 @@ export function createSharedUniforms(paintingTexture, depthTexture, near, far) {
     uPainterViewProj: { value: new THREE.Matrix4() },
     uNear: { value: near },
     uFar: { value: far },
-    uMode: { value: FILL_MODES.inferido },
+    uMode: { value: FILL_MODES.neutro },
     uMarkInferred: { value: 0 },
     uNeutral: { value: new THREE.Color('#c9bba2') },
     uFogColor: { value: new THREE.Color('#9fb6cf') },
