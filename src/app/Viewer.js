@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { PictureSpace, resolvePlanes, buildElementGeometry } from '../core/pictureSpace.js';
-import { createProjectiveMaterial, createSharedUniforms } from '../core/projectiveMaterial.js';
+import { createProjectiveMaterial, createSharedUniforms, FILL_MODES } from '../core/projectiveMaterial.js';
 import { createPainterCamera, VisitorCamera } from '../core/cameras.js';
 import { createPerspectiveHelpers, createEyeMarker, HELPER_LAYER } from '../scene/perspectiveHelpers.js';
 
@@ -18,7 +18,7 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) 
  *   'model' -> "maqueta": vista casi isométrica, como la reconstrucción de la Flagelación.
  */
 export class Viewer {
-  constructor(container, calibration, sceneData, paintingTexture) {
+  constructor(container, calibration, sceneData, paintingTexture, inferred) {
     this.container = container;
     this.calib = calibration;
     this.space = new PictureSpace(calibration);
@@ -55,7 +55,7 @@ export class Viewer {
       this.painterCamera.matrixWorldInverse,
     );
 
-    this.buildPicture(sceneData);
+    this.buildPicture(sceneData, inferred);
     this.buildHelpers(paintingTexture);
     this.renderDepth();
 
@@ -81,20 +81,38 @@ export class Viewer {
 
   // ---------------------------------------------------------------- escena
 
-  buildPicture(sceneData) {
+  buildPicture(sceneData, inferred) {
     this.planes = resolvePlanes(this.space, sceneData.elements);
     this.pictureGroup = new THREE.Group();
     this.elementMeshes = new Map();
-    const material = createProjectiveMaterial(this.uniforms);
+    // Aristas de evidencia (capa de ayudas, fuera de la proyección):
+    // blanco = plano medido en la pintura, ámbar discontinuo = plano supuesto.
+    this.evidenceEdges = new THREE.Group();
+    const edgeMeasured = new THREE.LineBasicMaterial({ color: 0xf3ead8, transparent: true, opacity: 0.45 });
+    const edgeAssumed = new THREE.LineDashedMaterial({ color: 0xffb000, dashSize: 0.12, gapSize: 0.08, transparent: true });
+    this.edgeMaterials = [[edgeMeasured, 0.45], [edgeAssumed, 1]];
+
     for (const el of sceneData.elements) {
-      const geometry = buildElementGeometry(this.space, el, this.planes.get(el.id));
+      const info = inferred?.meta[el.id];
+      const geometry = buildElementGeometry(this.space, el, this.planes.get(el.id), info?.bounds);
+      const material = createProjectiveMaterial(this.uniforms, {
+        uInferred: { value: inferred?.textures.get(el.id) ?? null },
+        uBackColor: { value: new THREE.Color(info?.backColor ?? '#6e6456') },
+      });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = el.id;
-      mesh.userData = { label: el.label, kind: el.kind };
+      mesh.userData = { label: el.label, kind: el.kind, evidence: el.evidence, seenFraction: info?.seenFraction };
       this.pictureGroup.add(mesh);
       this.elementMeshes.set(el.id, mesh);
+
+      const assumed = el.evidence === 'assumed';
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 1), assumed ? edgeAssumed : edgeMeasured);
+      if (assumed) edges.computeLineDistances();
+      edges.layers.set(HELPER_LAYER);
+      this.evidenceEdges.add(edges);
     }
-    this.scene.add(this.pictureGroup);
+    this.scene.add(this.pictureGroup, this.evidenceEdges);
+    this.setFillMode('inferido');
 
     // Suelo neutro "infinito" (solo visual, fuera de la proyección). Se dibuja
     // primero y sin escribir profundidad: es un fondo, nunca tapa a la escena.
@@ -220,6 +238,19 @@ export class Viewer {
     );
   }
 
+  /** 'fiel' | 'neutro' | 'inferido': qué se muestra donde el pintor no pintó nada. */
+  setFillMode(mode) {
+    this.fillMode = mode;
+    this.uniforms.uMode.value = FILL_MODES[mode];
+    this.evidenceEdges.visible = mode === 'fiel' || this.showEvidence === true;
+    this.emit();
+  }
+
+  setEvidenceVisible(v) {
+    this.showEvidence = v;
+    this.evidenceEdges.visible = v || this.fillMode === 'fiel';
+  }
+
   setHelpersVisible(v) {
     this.helpers.visible = v;
     this.eyeMarker.visible = v || this.mode === 'model';
@@ -270,6 +301,9 @@ export class Viewer {
 
     // Perspectiva aérea: solo fuera del ojo (en el ojo manda la pintura).
     this.uniforms.uFogAmount.value = (this.fogStrength ?? 0) * (1 - this.camera.painterness);
+    // Las aristas de evidencia se desvanecen al llegar al ojo: ahí manda la pintura.
+    const k = this.eyeFactor();
+    for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
     this.renderer.render(this.scene, this.camera);
     this.onFrame?.(this);
   }

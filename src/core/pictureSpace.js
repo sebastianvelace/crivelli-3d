@@ -114,7 +114,7 @@ function to2D(type, p) {
  * Por construcción, visto desde el ojo, cada vértice cae exactamente sobre su
  * píxel: por eso la vista inicial reproduce la pintura.
  */
-export function buildElementGeometry(space, el, plane) {
+export function buildElementGeometry(space, el, plane, uvBounds = null) {
   const lift = (pts) =>
     pts.map(([u, v]) => {
       const p = space.intersect(u, v, plane);
@@ -147,6 +147,18 @@ export function buildElementGeometry(space, el, plane) {
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+  // UV en el propio plano, con los mismos límites que usó analysis/infer.py al
+  // hornear la textura inferida: uv = (a - amin, b - bmin) / tamaño.
+  if (uvBounds) {
+    const [amin, bmin, amax, bmax] = uvBounds;
+    const uvs = new Float32Array(all.length * 2);
+    [...contour2, ...holes2.flat()].forEach((p, i) => {
+      uvs[i * 2] = (p.x - amin) / (amax - amin);
+      uvs[i * 2 + 1] = (p.y - bmin) / (bmax - bmin);
+    });
+    geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  }
   geometry.setIndex(index);
   geometry.computeVertexNormals();
   geometry.computeBoundingSphere();

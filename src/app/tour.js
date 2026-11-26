@@ -11,7 +11,8 @@ const STOPS = [
   { caption: 'Entramos al cuadro: el piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.6], look: [-0.2, 1.2, -8], t: 0, fov: 70, dur: 5, hold: 2 },
   { caption: 'Gabriel y san Emigdio son "cartones" a la profundidad que dicta la perspectiva.', pos: [1.1, 1.35, -1.2], look: [-0.3, 1.0, -2.6], t: 0, fov: 65, dur: 6, hold: 3 },
   { caption: 'La calle se aleja hacia el punto de fuga: la escalera, el arco y el puente.', pos: [-0.5, 1.6, -5.5], look: [0, 1.6, -14], t: 0, fov: 65, dur: 7, hold: 3 },
-  { caption: 'Desde atrás aparecen las zonas que el pintor nunca mostró (color neutro).', pos: [-0.6, 1.7, -9.5], look: [0.4, 1.2, -1], t: 0, fov: 70, dur: 6, hold: 3 },
+  { caption: 'Modo fiel: mirando hacia atrás solo queda lo que Crivelli pintó; los huecos son lo que nunca mostró.', pos: [-0.6, 1.7, -9.5], look: [0.4, 1.2, -1], t: 0, fov: 70, dur: 6, hold: 4, fill: 'fiel' },
+  { caption: 'Modo inferido: las baldosas siguen su medida real y el resto se completa a partir de lo visto.', pos: [-0.6, 1.7, -9.5], look: [0.4, 1.2, -1], t: 0, fov: 70, dur: 0.1, hold: 4, fill: 'inferido' },
   { caption: 'La casa de María: fachada, techo de vigas y el cuarto detrás de las pilastras.', pos: [-0.4, 1.4, -2.3], look: [2.1, 1.3, -3.2], t: 0, fov: 70, dur: 6, hold: 3 },
   { caption: 'Vista de maqueta: la geometría completa, como en la reconstrucción de la Flagelación.', pos: [-38, 50, 58], look: [0.4, 3, -11], t: 0, fov: 14, dur: 6, hold: 4 },
   { caption: 'Volvemos al ojo… y el espacio vuelve a ser la pintura.', pos: [0, 1.51, 0], look: [0, 1.51, -5], t: 1, fov: 70, dur: 6, hold: 3 },
@@ -29,6 +30,7 @@ export function createTour(viewer, onCaption) {
     }
     const s = STOPS[i];
     onCaption(s.caption);
+    if (s.fill) viewer.setFillMode(s.fill);
     // Las paradas "en el ojo" usan la calibración exacta, no un número fijo.
     const atEye = s.t === 1;
     const position = atEye ? viewer.space.eye.clone() : new THREE.Vector3(...s.pos);

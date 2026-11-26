@@ -150,3 +150,30 @@ body {
 .lil-gui {
   --font-family: system-ui, sans-serif;
 }
+
+#legend {
+  position: fixed;
+  right: 18px;
+  bottom: 64px;
+  max-width: min(360px, 40vw);
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(10, 8, 6, 0.72);
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  pointer-events: none;
+}
+
+#legend .sw {
+  display: inline-block;
+  width: 18px;
+  height: 0;
+  vertical-align: middle;
+  border-top: 2px solid #f3ead8;
+}
+
+#legend .sw.assumed {
+  border-top: 2px dashed #ffb000;
+}

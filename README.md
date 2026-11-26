@@ -46,6 +46,43 @@ python -m venv .venv && .venv/bin/pip install -r requirements.txt
 
 Lee `analysis/data/lines.json` y escribe `public/data/calibration.json`, `docs/01_lineas_de_fuga.jpg`, `docs/02_planta_rectificada.png` y `analysis/out/reporte.md`. Si marcás líneas nuevas con `marcador.html`, exportá el JSON, reemplazá `analysis/data/lines.json` y volvé a correr el script.
 
+### Repetir el modo inferido
+
+```bash
+.venv/bin/python analysis/infer.py
+```
+
+Lee `scene.json` y `calibration.json`, y hornea `public/textures/*.jpg`, `public/data/textures.json` y `docs/07_mascaras_de_evidencia.jpg` (tarda alrededor de un minuto). Hay que volver a correrlo cada vez que cambie la escena.
+
+---
+
+## Dos modos: lo pintado y lo inferido
+
+Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la pintura. La diferencia aparece al entrar y mirar lo que el pintor no mostró. El panel *Lo que Crivelli no pintó* tiene tres opciones:
+
+| Modo | Qué se ve donde no hay pintura |
+| --- | --- |
+| **Fiel al cuadro** | Nada: el fragmento se descarta y se ve el hueco de información. Además se dibujan las aristas de cada plano: blanco si su posición se **midió** en la pintura, ámbar discontinuo si es un **supuesto** (por ejemplo, la logia a 1,5 m de la fachada). |
+| **Neutro (yeso)** | Un color neutro, sin textura inventada (el comportamiento del MVP). |
+| **Inferido** | Una textura horneada offline por `analysis/infer.py`. *Marcar lo inferido* la cubre con un rayado rosa. |
+
+Cada elemento de `scene.json` lleva:
+- `evidence`: `measured` o `assumed`, con una `note` que explica el supuesto.
+- `fill`: la regla para completar lo oculto en el modo inferido.
+
+La inferencia tiene dos niveles, a propósito:
+
+1. **Por regla (la más defendible).** En el piso de la calle, lo oculto repite una baldosa **real** rectificada, sin figuras encima, con el tamaño medido (36 cm). En cada celda se usa una de las 8 simetrías del cuadrado (el mármol no tiene orientación) y las juntas se dibujan con su ancho y color medidos. Es la misma lógica de una hipótesis *ex suppositione*: una regla observada aplicada donde no hay datos.
+2. **Por continuidad (inpainting).** El resto se rellena con *Frequency Selective Reconstruction* (OpenCV xphoto), que reconstruye textura y no solo color, a partir de lo visto en el mismo plano. Lejos de los datos (más de ~0,5 m) el relleno se funde con el color medio del elemento: ahí cualquier detalle sería inventado.
+
+**Cómo se sabe qué vio el pintor.** `infer.py` calcula un z-buffer analítico en la imagen: cada elemento es un plano, así que la profundidad de cada píxel sale de cortar su rayo con el plano. Un texel de un elemento está «visto» si, proyectado a la pintura, no hay otro elemento más cerca del ojo. Es el mismo criterio que usa el shader en tiempo real.
+
+La lámina `docs/07_mascaras_de_evidencia.jpg` muestra, para cada elemento, qué fracción vio el pintor (por ejemplo, del piso de la calle solo el 25 %; de la fachada de María, el 96 %).
+
+Al etiquetar la escena aparecieron dos inconsistencias, que se corrigieron:
+- **Muro derecho:** su borde lejano tapaba al hombre del manto dorado y a la maceta del puente. Se recortó donde empieza el puente.
+- **Balcón izquierdo:** las figuras del balcón quedaban detrás del propio muro. Se adelantaron 1,1 m, porque el balcón sobresale, y quedaron marcadas como supuesto.
+
 ---
 
 ## Imagen
@@ -77,6 +114,12 @@ Una curiosidad: el punto de distancia derecho que dan las baldosas de la hilera 
 | ![Dentro de la calle](docs/04_dentro_de_la_calle.png) | ![Maqueta](docs/05_maqueta_con_lineas_de_fuga.png) |
 
 `docs/06_volviendo_al_ojo.png` muestra un cuadro de la animación de regreso al ojo.
+
+| Modo fiel | Modo inferido |
+| --- | --- |
+| ![Fiel](docs/08_modo_fiel.png) | ![Inferido](docs/09_modo_inferido.png) |
+
+![Lo inferido, marcado](docs/10_inferido_marcado.png)
 
 ---
 
@@ -181,10 +224,14 @@ analysis/
   geometry.py                 punto de fuga, distancia, altura del ojo, homografía y planta
   marcador.html / .js         herramienta para marcar líneas sobre la pintura
   out/reporte.md              resumen numérico
+  scene3d.py                  la geometría de la escena en Python (igual que pictureSpace.js)
+  infer.py                    modo inferido: z-buffer, texturas planas, regla de baldosas e inpainting
 public/
   data/calibration.json       resultado del análisis (lo lee la escena)
   data/scene.json             polígonos y planos de la reconstrucción
   data/planta.png             planta rectificada (panel del visor)
+  data/textures.json          límites y estadísticas de las texturas inferidas
+  textures/                   texturas planas por elemento (modo inferido)
   painting/                   textura de la pintura (2048 px)
 src/
   core/pictureSpace.js        rayos, planos, anclas, lifting y triangulación
@@ -212,8 +259,9 @@ RESENA.md                     reseña de una página (objetivo y relación con G
 | 6. Controles, «Volver al ojo» y panel | 2 | ✅ |
 | 7. README, RESENA y capturas | 1,5 | ✅ |
 | 8. Extras: perspectiva aérea y recorrido guiado | 1 | ✅ (básicos) |
+| 9. Modos fiel e inferido (evidencia, regla de baldosas, inpainting) | 4 | ✅ |
 
-**Mejoras posibles:** recortar las figuras con máscaras de píxeles en lugar de polígonos, modelar los escalones uno por uno, darle volumen al balcón y a la cornisa, y rellenar las zonas ocultas con texturas sintetizadas (*inpainting*).
+**Mejoras posibles:** recortar las figuras con máscaras de píxeles (por ejemplo, con Segment Anything) en lugar de polígonos, darles relieve con un mapa de profundidad (Depth Anything V2), una regla de ladrillos para los muros, modelar los escalones uno por uno, darle volumen al balcón y a la cornisa,.
 
 ---
 

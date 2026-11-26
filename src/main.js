@@ -17,14 +17,37 @@ async function main() {
     loadJSON('data/calibration.json'),
     loadJSON('data/scene.json'),
   ]);
-  const painting = await new THREE.TextureLoader().loadAsync(BASE + 'painting/crivelli_ng739_2048.jpg');
+  const loader = new THREE.TextureLoader();
+  const painting = await loader.loadAsync(BASE + 'painting/crivelli_ng739_2048.jpg');
   painting.colorSpace = THREE.SRGBColorSpace;
   painting.anisotropy = 8;
 
-  const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting);
+  // Texturas del modo inferido (horneadas por analysis/infer.py). Si faltan, la
+  // app sigue funcionando en los modos fiel y neutro.
+  const inferred = await loadInferred(loader);
+
+  const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting, inferred);
   setupOverlays(viewer, calibration);
   setupGui(viewer, calibration);
   document.getElementById('loading').remove();
+}
+
+async function loadInferred(loader) {
+  try {
+    const meta = await loadJSON('data/textures.json');
+    const entries = await Promise.all(
+      Object.entries(meta).map(async ([id, info]) => {
+        const tex = await loader.loadAsync(BASE + info.file);
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = 4;
+        return [id, tex];
+      }),
+    );
+    return { meta, textures: new Map(entries) };
+  } catch (err) {
+    console.warn('Sin texturas inferidas:', err.message);
+    return null;
+  }
 }
 
 // ------------------------------------------------------------------ overlays HTML
@@ -49,7 +72,17 @@ function setupOverlays(viewer, calib) {
     tour: ['Recorrido guiado', ''],
   };
 
+  const LEGEND = {
+    fiel: '<b>Fiel al cuadro.</b> Solo existe lo que Crivelli pintó: los huecos son lo que nunca mostró. ' +
+      'Aristas: <span class="sw measured"></span> plano medido en la pintura · <span class="sw assumed"></span> plano supuesto.',
+    neutro: '<b>Neutro.</b> Lo que el pintor no mostró se pinta de color yeso, sin inventar textura.',
+    inferido: '<b>Inferido.</b> El piso oculto repite la baldosa real con su medida (regla); el resto se rellena con ' +
+      'inpainting a partir de lo visto. Activa «Marcar lo inferido» para verlo rayado.',
+  };
+  const legend = document.getElementById('legend');
+
   viewer.onChange(() => {
+    legend.innerHTML = LEGEND[viewer.fillMode] ?? '';
     const [title, text] = MODE_TEXT[viewer.mode] ?? ['', ''];
     hud.textContent = title;
     hint.textContent = text;
@@ -82,8 +115,9 @@ function setupGui(viewer, calib) {
     overlayOpacity: 0.5,
     helpers: false,
     plan: false,
-    occlusion: true,
-    highlight: false,
+    fillMode: 'inferido',
+    markInferred: false,
+    evidence: false,
     fog: 0,
   };
   viewer.settings = settings;
@@ -116,18 +150,20 @@ function setupGui(viewer, calib) {
   gui.add(actions, 'orbita').name('Modo órbita');
   gui.add(actions, 'maqueta').name('Modo maqueta');
 
+  const fill = gui.addFolder('Lo que Crivelli no pintó');
+  fill.add(settings, 'fillMode', { 'Fiel al cuadro': 'fiel', 'Neutro (yeso)': 'neutro', Inferido: 'inferido' })
+    .name('Modo').onChange((v) => viewer.setFillMode(v));
+  fill.add(settings, 'markInferred').name('Marcar lo inferido').onChange((v) => {
+    viewer.uniforms.uMarkInferred.value = v ? 1 : 0;
+  });
+  fill.add(settings, 'evidence').name('Aristas: medido / supuesto').onChange((v) => viewer.setEvidenceVisible(v));
+
   const check = gui.addFolder('Comprobar la geometría');
   check.add(settings, 'overlay').name('Superponer la pintura');
   check.add(settings, 'overlayOpacity', 0, 1, 0.01).name('Opacidad');
   check.add(settings, 'helpers').name('Líneas y punto de fuga 3D').onChange((v) => viewer.setHelpersVisible(v));
   check.add(settings, 'plan').name('Planta reconstruida').onChange((v) => {
     document.getElementById('plan').classList.toggle('visible', v);
-  });
-  check.add(settings, 'occlusion').name('Ocultar lo no pintado').onChange((v) => {
-    viewer.uniforms.uOcclusion.value = v ? 1 : 0;
-  });
-  check.add(settings, 'highlight').name('Resaltar zonas ocultas').onChange((v) => {
-    viewer.uniforms.uHighlight.value = v ? 0.65 : 0;
   });
 
   const extras = gui.addFolder('Extras');
@@ -139,6 +175,13 @@ function setupGui(viewer, calib) {
   extras.close();
 
   gui.add(actions, 'creditos').name('Créditos y fuentes');
+  // Si el modo cambia desde código (por ejemplo, el recorrido guiado), el panel lo refleja.
+  viewer.onChange(() => {
+    if (settings.fillMode !== viewer.fillMode) {
+      settings.fillMode = viewer.fillMode;
+      gui.controllersRecursive().forEach((c) => c.updateDisplay());
+    }
+  });
   document.getElementById('credits-close').addEventListener('click', () => document.getElementById('credits').close());
 
   // Atajo: tecla R = volver al ojo
@@ -147,7 +190,7 @@ function setupGui(viewer, calib) {
   });
 
   // Exponer para depuración y capturas desde la consola
-  window.crivelli = { viewer, tour, calib };
+  window.crivelli = { viewer, tour, calib, settings, gui };
 }
 
 main().catch((err) => {

@@ -1,2 +1,4 @@
 numpy>=1.24
 Pillow>=10
+# Solo para analysis/infer.py (modo inferido)
+opencv-contrib-python-headless>=4.8
