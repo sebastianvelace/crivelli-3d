@@ -31,9 +31,10 @@ export function createMuseum(space, calib, paintingTexture) {
   const cyp = (tl.y + br.y) / 2;
   const z = -d;
 
-  // FrontSide con las normales hacia adentro: desde afuera (vista de maqueta) las paredes no tapan nada.
-  const wallMat = new THREE.MeshStandardMaterial({ color: '#4a2a2a', roughness: 0.95 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: '#593b35', roughness: 0.95 });
   const floorMat = new THREE.MeshStandardMaterial({ color: '#5b4330', roughness: 0.8 });
+  const ceilingMat = new THREE.MeshStandardMaterial({ color: '#c6b69e', roughness: 0.95 });
+  const trimMat = new THREE.MeshStandardMaterial({ color: '#a1917b', roughness: 0.9 });
   const goldMat = new THREE.MeshStandardMaterial({ color: '#b8913f', roughness: 0.35, metalness: 0.7 });
 
   // Pared del cuadro, con un hueco del tamaño del marco: por ahí se "entra" a la calle.
@@ -53,32 +54,38 @@ export function createMuseum(space, calib, paintingTexture) {
   group.add(wall);
 
   // Piso, techo y paredes de la sala (delante del cuadro: z > -d)
+  const width = ROOM.x1 - ROOM.x0;
   const depth = ROOM.z1 - z;
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.x1 - ROOM.x0, depth), floorMat);
+  const middle = z + depth / 2;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), floorMat);
   floor.rotation.x = -Math.PI / 2;
-  floor.position.set(0, 0.001, z + depth / 2);
-  const ceiling = floor.clone();
-  ceiling.material = wallMat;
-  ceiling.rotation.x = Math.PI / 2;
-  ceiling.position.y = ROOM.h;
+  floor.position.set(0, 0.001, middle);
+  const ceiling = box(width + 0.03, 0.18, depth + 0.03, ceilingMat, 0, ROOM.h + 0.09, middle);
+  ceiling.name = 'museum-ceiling';
   const side = (x, ry) => {
     const w = new THREE.Mesh(new THREE.PlaneGeometry(depth, ROOM.h), wallMat);
     w.rotation.y = ry;
-    w.position.set(x, ROOM.h / 2, z + depth / 2);
+    w.position.set(x, ROOM.h / 2, middle);
     return w;
   };
-  const back = new THREE.Mesh(new THREE.PlaneGeometry(ROOM.x1 - ROOM.x0, ROOM.h), wallMat);
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(width, ROOM.h), wallMat);
   back.position.set(0, ROOM.h / 2, ROOM.z1);
   back.rotation.y = Math.PI;
   group.add(floor, ceiling, side(ROOM.x0, Math.PI / 2), side(ROOM.x1, -Math.PI / 2), back);
 
-  // Zócalo oscuro
-  const skirting = new THREE.Mesh(
-    new THREE.BoxGeometry(ROOM.x1 - ROOM.x0, 0.14, 0.03),
-    new THREE.MeshStandardMaterial({ color: '#2a1a14', roughness: 0.6 }),
-  );
-  skirting.position.set(0, 0.07, z + 0.01);
-  group.add(skirting);
+  const baseboardMat = new THREE.MeshStandardMaterial({ color: '#3a281f', roughness: 0.67 });
+  for (const [height, section, thickness, material] of [
+    [ROOM.h - 0.07, 0.14, 0.14, trimMat],
+    [ROOM.h - 0.17, 0.06, 0.065, trimMat],
+    [0.10, 0.20, 0.055, baseboardMat],
+  ]) {
+    group.add(
+      box(width, section, thickness, material, 0, height, z + thickness / 2),
+      box(width, section, thickness, material, 0, height, ROOM.z1 - thickness / 2),
+      box(thickness, section, depth, material, ROOM.x0 + thickness / 2, height, middle),
+      box(thickness, section, depth, material, ROOM.x1 - thickness / 2, height, middle),
+    );
+  }
 
   // Marco dorado (cuatro listones por fuera del panel)
   const bar = (w, h, x, y) => {
@@ -147,12 +154,7 @@ export function createMuseum(space, calib, paintingTexture) {
   marker.add(ring, label, eyeDot);
   group.add(marker);
 
-  // Luces (solo afectan a los materiales del museo; la escena proyectada no usa luces)
-  const hemi = new THREE.HemisphereLight('#fff2dc', '#2a1d14', 1.6);
-  const spot = new THREE.SpotLight('#fff1d6', 40, 0, 0.55, 0.5, 2);
-  spot.position.set(0, ROOM.h - 0.2, 2.2);
-  spot.target.position.set(cxp, cyp, z);
-  group.add(hemi, spot, spot.target);
+  addGalleryLighting(group, { x: cxp, y: cyp, z });
 
   group.traverse((o) => o.layers.set(MUSEUM_LAYER));
 
@@ -164,13 +166,63 @@ export function createMuseum(space, calib, paintingTexture) {
     windowDistance: d,
     aperture: { x0: tl.x, x1: br.x, y0: br.y, y1: tl.y, z },
     /** Pose inicial: de pie en la sala, algo al costado, mirando el cuadro. */
-    startPose: { position: new THREE.Vector3(1.5, 1.62, 4.6), target: new THREE.Vector3(cxp, cyp - 0.15, z) },
+    startPose: { position: new THREE.Vector3(1.4, 1.66, 5.15), target: new THREE.Vector3(cxp, cyp + 0.3, z) },
     setPanelOpacity(v) {
       panelMat.opacity = v;
       panel.visible = v > 0.001;
       panelMat.depthWrite = v > 0.99;
     },
   };
+}
+
+function box(w, h, d, material, x, y, z) {
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+  mesh.position.set(x, y, z);
+  return mesh;
+}
+
+function addGalleryLighting(room, painting) {
+  const lighting = new THREE.Group();
+  lighting.name = 'museum-lighting';
+  const bronze = new THREE.MeshStandardMaterial({ color: '#403530', metalness: 0.32, roughness: 0.52 });
+  const warmGlass = new THREE.MeshBasicMaterial({ color: '#fff2d4' });
+  const housing = new THREE.CylinderGeometry(0.073, 0.108, 0.21, 24);
+  const lens = new THREE.CircleGeometry(0.085, 24);
+  const down = new THREE.Vector3(0, -1, 0);
+
+  for (const z of [0.32, 3.6]) {
+    const width = z < 1 ? 3.8 : 7.4;
+    lighting.add(box(width, 0.046, 0.055, bronze, 0, ROOM.h - 0.027, z));
+  }
+  for (const [x, z, to, power, spread] of [
+    [painting.x - 1.36, 0.32, [painting.x - 0.42, painting.y, painting.z], 30, 0.47],
+    [painting.x + 1.36, 0.32, [painting.x + 0.42, painting.y, painting.z], 30, 0.47],
+    [-3.15, 3.6, [ROOM.x0 + 0.03, 1.65, 3.45], 44, 0.52],
+    [3.15, 3.6, [ROOM.x1 - 0.03, 1.65, 3.45], 44, 0.52],
+  ]) {
+    const from = new THREE.Vector3(x, ROOM.h - 0.31, z);
+    const target = new THREE.Vector3(...to);
+    const direction = target.clone().sub(from).normalize();
+    const fixture = new THREE.Group();
+    fixture.position.copy(from);
+    fixture.quaternion.setFromUnitVectors(down, direction);
+    const glass = new THREE.Mesh(lens, warmGlass);
+    glass.rotation.x = Math.PI / 2;
+    glass.position.y = -0.106;
+    fixture.add(new THREE.Mesh(housing, bronze), glass);
+    lighting.add(fixture, box(0.043, 0.23, 0.043, bronze, x, ROOM.h - 0.15, z));
+
+    const spot = new THREE.SpotLight('#fff0d7', power, 9, spread, 0.7, 2);
+    spot.position.copy(from).addScaledVector(direction, 0.115);
+    spot.target.position.copy(target);
+    lighting.add(spot, spot.target);
+  }
+
+  const ambient = new THREE.HemisphereLight('#fff7e8', '#79644f', 1.75);
+  const bounce = new THREE.PointLight('#ffe9cb', 13, 8, 2);
+  bounce.position.set(0, 3.1, 2.9);
+  lighting.add(ambient, bounce);
+  room.add(lighting);
 }
 
 /** Plano con texto dibujado en un canvas (cartelas y rótulos del museo). */
