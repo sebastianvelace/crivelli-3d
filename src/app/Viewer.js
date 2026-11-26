@@ -149,7 +149,7 @@ export class Viewer {
       const material = createProjectiveMaterial(this.uniforms, {
         uInferred: { value: inferred?.textures.get(el.id) ?? null },
         uBackColor: { value: new THREE.Color(info?.backColor ?? '#6e6456') },
-        uIsFigure: { value: el.kind === 'figure' ? 1 : 0 },
+        uInpaintInNeutral: { value: el.kind === 'figure' && !el.plasterInNeutral && !!inferred?.textures.has(el.id) },
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = el.id;

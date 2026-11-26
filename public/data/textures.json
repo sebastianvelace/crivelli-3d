@@ -26,9 +26,9 @@
    795,
    2048
   ],
-  "seenFraction": 0.324,
+  "seenFraction": 0.307,
   "method": "neutral",
-  "backColor": "#625646",
+  "backColor": "#635747",
   "file": "textures/piso_calle.jpg"
  },
  "pared_izquierda": {
@@ -42,9 +42,9 @@
    786,
    1814
   ],
-  "seenFraction": 0.754,
+  "seenFraction": 0.429,
   "method": "inpaint",
-  "backColor": "#534634",
+  "backColor": "#4e412e",
   "file": "textures/pared_izquierda.jpg"
  },
  "pared_derecha": {
@@ -306,33 +306,33 @@
  "balcon_figuras": {
   "bounds": [
    -1.6026554381700133,
-   1.8411899734001476,
-   -1.0273992156032248,
+   -0.8671331182464113,
+   -0.9602160071282715,
    3.6341418495754665
   ],
   "size": [
-   126,
-   394
+   141,
+   990
   ],
-  "seenFraction": 1.0,
+  "seenFraction": 0.745,
   "method": "inpaint",
-  "backColor": "#524332",
+  "backColor": "#534432",
   "file": "textures/balcon_figuras.jpg"
  },
  "nino": {
   "bounds": [
-   -1.5627654081380096,
-   1.8411899734001476,
-   -1.2457446431468233,
+   -1.5984564876403284,
+   0.6843791024720438,
+   -1.1638651078179738,
    2.605398969802742
   ],
   "size": [
-   69,
-   168
+   95,
+   422
   ],
-  "seenFraction": 1.0,
+  "seenFraction": 0.996,
   "method": "inpaint",
-  "backColor": "#544a38",
+  "backColor": "#6e6857",
   "file": "textures/nino.jpg"
  },
  "emigdio": {

@@ -42,7 +42,7 @@ export function createProjectiveMaterial(shared, perElement) {
       uniform sampler2D uDepth;
       uniform sampler2D uInferred;  // textura plana del elemento (vista + inferida)
       uniform vec3 uBackColor;      // reverso de los cartones en el modo inferido
-      uniform float uIsFigure;      // 1 = cartón de una figura
+      uniform bool uInpaintInNeutral;  // permite reconstruir huecos pequeños en figuras
       uniform float uNear;
       uniform float uFar;
       uniform float uMode;          // 0 fiel, 1 neutro, 2 inferido
@@ -89,7 +89,7 @@ export function createProjectiveMaterial(shared, perElement) {
         vec3 color;
         if (seen) {
           color = texture2D(uPainting, uv).rgb;
-        } else if (uMode > 1.5 || (uIsFigure > 0.5 && gl_FrontFacing)) {
+        } else if (uMode > 1.5 || (uInpaintInNeutral && gl_FrontFacing)) {
           // En las figuras lo oculto son huecos chicos (un brazo que tapaba otra
           // figura): ahí el inpainting reconstruye bien, así que se usa también en
           // el modo neutro para no agujerear los cartones.
