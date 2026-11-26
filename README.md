@@ -225,7 +225,7 @@ Un punto del piso (X, 0, −D) se proyecta en u = cx + fX/D, v = cy + f·Hc/D. E
       [1]   [ 0    1    0   ] [1]
 ```
 
-La planta (`docs/02_planta_rectificada.png`) se obtiene recorriendo una cuadrícula de (X, D) en metros, llevándola a la pintura con H y muestreando el color con interpolación bilineal. Como comprobación independiente, estimamos también H por **DLT** a partir de 11 esquinas de baldosas medidas a mano. Las dos coinciden con 8 px de diferencia RMS. Las figuras aparecen «estiradas» en la planta porque no están sobre el piso: es justamente lo que la homografía de un plano no puede representar.
+La [planta rectificada](docs/02_planta_rectificada.png) aplica H en una cuadrícula de 1 m. Muestrea únicamente el piso a altura cero visible desde el ojo, entre 1,5 m y el arco, con X entre −3 y 4 m. El gris claro marca las superficies sin dato de piso visible. Las huellas de los muros provienen de los planos de la escena, y los puntos de las figuras representan el centro en planta de sus regiones de interés. El cono indica el campo horizontal del cuadro. La comprobación por DLT usa 11 esquinas de baldosas y difiere de la homografía analítica en 8 px RMS.
 
 ### 8. Construcción de la escena (*Tour Into the Picture*)
 

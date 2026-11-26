@@ -29,6 +29,8 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
+from floor_plan import draw_floor_plan
+
 ROOT = Path(__file__).resolve().parent.parent
 LINES = ROOT / "analysis" / "data" / "lines.json"
 
@@ -224,7 +226,10 @@ def main():
     out.write_text(json.dumps(calib, indent=2, ensure_ascii=False), encoding="utf-8")
 
     draw_lines_figure(img_path, data, calib)
-    rectify_floor(img_path, H_analytic, calib, W, Himg, X0)
+    scene = json.loads((ROOT / 'public/data/scene.json').read_text(encoding='utf-8'))
+    plan = draw_floor_plan(img_path, H_analytic, calib, scene['elements'], font)
+    plan.save(ROOT / 'docs/02_planta_rectificada.png')
+    plan.save(ROOT / 'public/data/planta.png')
     write_report(calib)
     print(json.dumps(calib, indent=2, ensure_ascii=False))
 
@@ -271,68 +276,6 @@ def draw_lines_figure(img_path, data, calib):
     im.thumbnail((1600, 2400))
     im.save(ROOT / "docs" / "01_lineas_de_fuga.jpg", quality=88)
     del pad
-
-
-def rectify_floor(img_path, H_floor, calib, W, Himg, tile_x0):
-    """Planta del piso de la calle vista desde arriba (homografía inversa).
-
-    Para cada píxel de la planta (X, D) en metros se calcula su posición (u, v)
-    en la pintura con H y se toma el color por interpolación bilineal. Solo se
-    rellena lo que está por debajo del horizonte y dentro del cuadro."""
-    src = np.asarray(Image.open(img_path).convert("RGB"), dtype=np.float32)
-    ppm = 120  # píxeles por metro en la planta
-    x_min, x_max = -1.9, 1.1
-    d_min, d_max = 1.9, 9.8
-    w_out = int((x_max - x_min) * ppm)
-    h_out = int((d_max - d_min) * ppm)
-    xs = x_min + (np.arange(w_out) + 0.5) / ppm
-    ds = d_max - (np.arange(h_out) + 0.5) / ppm  # lejos arriba, cerca abajo
-    X, D = np.meshgrid(xs, ds)
-    pts = np.stack([X.ravel(), D.ravel(), np.ones(X.size)], axis=1) @ H_floor.T
-    u = pts[:, 0] / pts[:, 2]
-    v = pts[:, 1] / pts[:, 2]
-    valid = (u >= 0) & (u < W - 1) & (v >= 0) & (v < Himg - 1)
-    u0 = np.clip(np.floor(u).astype(int), 0, W - 2)
-    v0 = np.clip(np.floor(v).astype(int), 0, Himg - 2)
-    du, dv = (u - u0)[:, None], (v - v0)[:, None]
-    col = (src[v0, u0] * (1 - du) * (1 - dv) + src[v0, u0 + 1] * du * (1 - dv)
-           + src[v0 + 1, u0] * (1 - du) * dv + src[v0 + 1, u0 + 1] * du * dv)
-    col[~valid] = (30, 30, 34)
-    out = Image.fromarray(col.reshape(h_out, w_out, 3).clip(0, 255).astype(np.uint8))
-
-    # Cuadrícula de 1 m y rótulos
-    margin = 70
-    canvas = Image.new("RGB", (max(w_out + 2 * margin, 640), h_out + 2 * margin), (245, 240, 230))
-    canvas.paste(out, (margin, margin))
-    dr = ImageDraw.Draw(canvas, "RGBA")
-    f = font(18)
-    for xm in range(math.ceil(x_min), math.floor(x_max) + 1):
-        px = margin + (xm - x_min) * ppm
-        dr.line([px, margin, px, margin + h_out], fill=(0, 200, 255, 140), width=1)
-        dr.text((px - 8, margin + h_out + 8), f"{xm}", fill=(20, 20, 20), font=f)
-    for dm in range(math.ceil(d_min), math.floor(d_max) + 1):
-        py = margin + (d_max - dm) * ppm
-        dr.line([margin, py, margin + w_out, py], fill=(0, 200, 255, 140), width=1)
-        dr.text((8, py - 10), f"{dm} m", fill=(20, 20, 20), font=f)
-    # Juntas de baldosas reconstruidas (si el supuesto de baldosas cuadradas es
-    # correcto, esta cuadrícula roja debe calzar con las juntas de la pintura).
-    s, D0 = calib["tileSizeM"], calib["floorFrontDepthM"]
-    for k in range(-8, 12):
-        xm = tile_x0 + k * s
-        if x_min <= xm <= x_max:
-            px = margin + (xm - x_min) * ppm
-            dr.line([px, margin + (d_max - D0) * ppm, px, margin + (d_max - D0 - 4 * s) * ppm],
-                    fill=(255, 40, 40, 200), width=2)
-    for k in range(0, 5):
-        py = margin + (d_max - (D0 + k * s)) * ppm
-        dr.line([margin, py, margin + w_out, py], fill=(255, 40, 40, 200), width=2)
-    dr.text((margin, 10), "Planta rectificada del piso (homografía)", fill=(20, 20, 20), font=font(20))
-    dr.text((margin, 36), "rojo: baldosas cuadradas reconstruidas · celeste: 1 m", fill=(20, 20, 20), font=f)
-    dr.text((margin, margin + h_out + 34),
-            f"Baldosa ≈ {calib['tileSizeM'] * 100:.0f} cm · altura del ojo ≈ {calib['eyeHeightM']:.2f} m",
-            fill=(20, 20, 20), font=f)
-    canvas.save(ROOT / "docs" / "02_planta_rectificada.png")
-    canvas.save(ROOT / "public" / "data" / "planta.png")
 
 
 def write_report(c):
