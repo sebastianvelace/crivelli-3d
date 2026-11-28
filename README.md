@@ -33,7 +33,7 @@ npm run dev
 | *Opciones → Superficies ocultas* | Modo fiel, colores vecinos (por defecto) o inferido |
 | *Medir* | Selecciona dos puntos para obtener una distancia en metros. Al caminar, apunta con la mira y selecciona cada punto con un clic. También hay mediciones sugeridas. |
 | *Opciones → Perspectiva y geometría* | Superponer la pintura, marcar lo inferido, ver aristas medidas y supuestas, líneas de fuga y planta reconstruida. Haz clic en la planta para ampliarla. |
-| *Recorrido guiado* | 11 paradas en 73 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
+| *Recorrido guiado* | 15 paradas en 89 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
 | *Opciones* | Perspectiva aérea dentro de «Perspectiva y geometría», captura PNG y créditos |
 
 Para volver a la sala desde la calle, camina hacia el cuadro y cruza el marco abierto.

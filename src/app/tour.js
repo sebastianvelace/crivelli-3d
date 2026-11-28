@@ -2,26 +2,35 @@ import * as THREE from 'three';
 import { lookQuaternion } from './Viewer.js';
 import { PRESETS } from './measure.js';
 
-const STREET_COMPARISON = { pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1] };
+// Vista al frente, dentro de la calle: arco, fraile y muros pintados; nada de reversos ni de museo al fondo.
+const STREET_COMPARISON = { pos: [-0.5, 1.6, -3.2], look: [0.3, 1.6, -10], fov: 56 };
 
 const STOPS = [
-  { caption: 'La Anunciación cuelga en el museo a su tamaño real.', pose: 'museum', hold: 4 },
-  { caption: 'La placa del piso señala el lugar desde donde Crivelli construyó la perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 4, hold: 2 },
-  { caption: 'Al llegar al ojo, el cuadro se abre. La calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 5 },
+  { caption: 'La Anunciación cuelga en el museo a su tamaño real: 207 × 146,7 cm.', pose: 'museum', hold: 3 },
+  { caption: 'La placa del piso marca el ojo de Crivelli, el punto desde donde, según la calibración, se organiza su perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 3, hold: 2 },
+  { caption: 'Al llegar al ojo, la calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 4 },
   { caption: 'Las alturas del fraile y de Gabriel son supuestos para fijar la escala. A esa escala, la altura de María (1,22 m de rodillas) y la del hombre del manto dorado (1,83 m) son predicciones.', pose: 'eye', measure: true, hold: 5 },
-  { caption: 'Entramos al cuadro. El piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 4, hold: 2 },
-  { caption: 'En el muro izquierdo se ven la escalera, el niño y las figuras del balcón.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
-  { ...STREET_COMPARISON, caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', fill: 'fiel', travel: 4, hold: 3 },
-  { ...STREET_COMPARISON, caption: 'En modo inferido, los fragmentos ocultos se completan a partir de la textura visible.', fill: 'inferido', hold: 4 },
+  { caption: 'Entras al cuadro: el piso de baldosas deja de ser una imagen y se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 3, hold: 2 },
+  { caption: 'En el muro izquierdo se ven el niño, las figuras del balcón y el muro de ladrillo. Su posición en profundidad es un supuesto.', pos: [0.0, 1.9, -2.6], look: [-0.9, 2.15, -5.2], fov: 46, travel: 4, hold: 3 },
+  { ...STREET_COMPARISON, caption: 'Modo fiel: solo aparece lo pintado. Lo negro es lo que Crivelli dejó fuera, como el suelo que tapan las figuras.', fill: 'fiel', travel: 3, hold: 3 },
+  { ...STREET_COMPARISON, caption: 'Modo inferido: esos huecos se rellenan con textura de zonas vecinas. Es una hipótesis, no una medida.', fill: 'inferido', hold: 3 },
   {
-    caption: 'La casa de María tiene una fachada, un techo de vigas y un cuarto detrás de las pilastras.',
-    pos: [1.335, 1.36, -1.335], look: [1.64, 1.02, -3.11], fov: 59,
-    // Avanza por la calle y gira delante del muro derecho y de la fachada.
-    via: [[0.10, 1.55, -3.45], [0.36, 1.47, -1.65]],
-    fill: 'neutro', travel: 5, hold: 3,
+    caption: 'La logia es una caja 3D con techo de casetones, alfombra y pavo real. Es una reconstrucción a partir de lo pintado, no una foto del edificio.',
+    pos: [1.4, 3.2, -1.3], look: [1.4, 3.8, -2.5], fov: 75, via: [[0.0, 2.3, -2.2]],
+    fill: 'neutro', travel: 4, hold: 4,
   },
-  { caption: 'La maqueta deja ver cómo se distribuyen las fachadas, el arco y el fondo.', pos: [-38, 50, 58], look: [0.4, 3, -11], fov: 14, exterior: true, travel: 5, hold: 4 },
-  { caption: 'Al volver al ojo, el espacio vuelve a ser la pintura.', pose: 'eye', travel: 5, hold: 3 },
+  {
+    caption: 'La columna de María es un elemento propio, separado de la fachada: se lee el capitel con su decoración.',
+    pos: [0.55, 1.9, -1.35], look: [1.35, 2.2, -3.0], fov: 50, via: [[0.1, 2.5, -1.8]], travel: 3, hold: 3,
+  },
+  {
+    caption: 'El cuarto de María: pilastras, estantes de madera y la figura de María. Lo que no se pintó queda vacío.',
+    pos: [0.7, 1.45, -1.45], look: [1.75, 1.25, -3.1], fov: 58, travel: 3, hold: 3,
+  },
+  { caption: 'Vuelves al ojo: el espacio vuelve a ser la pintura.', pose: 'eye', travel: 3, hold: 2 },
+  { caption: 'En el Sidereus Nuncius (1610), Galileo estimó la altura de las montañas lunares a partir de la longitud de sus sombras en el terminador.', pose: 'eye', hold: 6 },
+  { caption: 'En su carta a Lodovico Cigoli (1612), Galileo habla de cómo la pintura hace ver relieve sobre una superficie plana. Cigoli, pintor amigo, puso una Luna manchada a los pies de María en Santa Maria Maggiore. La analogía: leer profundidad en una imagen plana y tratar la sombra como información.', pose: 'eye', hold: 9 },
+  { caption: 'La maqueta deja ver la caja de la logia, la columna, el arco y el fondo de la calle.', pos: [-36, 44, 60], look: [0.3, 3.2, -10.5], fov: 11.5, exterior: true, travel: 4, hold: 4 },
 ];
 
 export const TOUR_SECONDS = STOPS.reduce((total, { travel = 0, hold }) => total + travel + hold, 0);
