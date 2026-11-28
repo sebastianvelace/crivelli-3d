@@ -30,7 +30,7 @@ const STOPS = [
   { caption: 'Vuelves al ojo: el espacio vuelve a ser la pintura.', pose: 'eye', travel: 3, hold: 2 },
   { caption: 'En el Sidereus Nuncius (1610), Galileo estimó la altura de las montañas lunares a partir de la longitud de sus sombras en el terminador.', pose: 'eye', hold: 6 },
   { caption: 'En su carta a Lodovico Cigoli (1612), Galileo habla de cómo la pintura hace ver relieve sobre una superficie plana. Cigoli, pintor amigo, puso una Luna manchada a los pies de María en Santa Maria Maggiore. La analogía: leer profundidad en una imagen plana y tratar la sombra como información.', pose: 'eye', hold: 9 },
-  { caption: 'La maqueta deja ver la caja de la logia, la columna, el arco y el fondo de la calle.', pos: [-36, 44, 60], look: [0.3, 3.2, -10.5], fov: 11.5, exterior: true, travel: 4, hold: 4 },
+  { caption: 'La maqueta deja ver la caja de la logia, la columna, el arco y el fondo de la calle.', pose: 'model', exterior: true, travel: 4, hold: 4 },
 ];
 
 export const TOUR_SECONDS = STOPS.reduce((total, { travel = 0, hold }) => total + travel + hold, 0);
@@ -46,6 +46,10 @@ export function createTour(viewer, measure, onUpdate) {
   const poseFor = (stop) => {
     if (stop.pose === 'eye') {
       return { position: viewer.space.eye, quaternion: new THREE.Quaternion(), painterness: 1, fov: 70 };
+    }
+    if (stop.pose === 'model') {
+      const { position, target, fov } = viewer.modelView();
+      return { position, quaternion: lookQuaternion(position, target), painterness: 0, fov };
     }
     if (!stop.pos) return null;
     const position = new THREE.Vector3(...stop.pos);
@@ -97,6 +101,8 @@ export function createTour(viewer, measure, onUpdate) {
     const stage = STOPS[index];
     viewer.tourExterior = stage.exterior === true;
     viewer.setFillMode(stage.fill ?? viewer.fillMode);
+    viewer.setHelpersVisible(viewer.showHelpers);
+    if (stage.pose === 'model') viewer.eyeMarker.visible = true;
     update();
     if (stage.pose === 'museum') {
       viewer.enterMuseum(() => arrive(stage), { fromEntrance: true, duration: 0, mode: 'tour' });

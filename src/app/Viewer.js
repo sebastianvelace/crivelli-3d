@@ -436,16 +436,20 @@ export class Viewer {
     );
   }
 
-  enterModel() {
-    // Vista casi axonométrica: lejos y con un FOV muy estrecho (como una maqueta).
+  /** Cámara de la maqueta: casi axonométrica, lejos y con un FOV muy estrecho. Compartida con el recorrido. */
+  modelView() {
     const target = new THREE.Vector3(0.4, 3, -11);
     const dir = new THREE.Vector3(-0.55, 0.75, 1).normalize();
-    const pos = target.clone().addScaledVector(dir, 120);
+    return { target, position: target.clone().addScaledVector(dir, 120), fov: 11 };
+  }
+
+  enterModel() {
+    const { target, position: pos, fov } = this.modelView();
     this.setMode('transition');
     this.exteriorTransition = true;
     this.eyeMarker.visible = true;
     this.animateTo(
-      { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov: 11, duration: 2.6 },
+      { position: pos, quaternion: lookQuaternion(pos, target), painterness: 0, fov, duration: 2.6 },
       () => {
         this.orbit.target.copy(target);
         this.setMode('model');
