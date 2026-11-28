@@ -30,9 +30,8 @@ async function prepareViewer(progress) {
   const manager = new THREE.LoadingManager();
   manager.onProgress = (_, loaded, total) => { progress.value = loaded / total * 100; };
   const loader = new THREE.TextureLoader(manager);
-  const [inferred, galleryImage] = await Promise.all([
+  const [inferred] = await Promise.all([
     loadInferred(loader, textureMeta),
-    new THREE.ImageLoader(manager).loadAsync(BASE + 'textures/museo/madonna-rondine.jpg').catch(() => null),
     paintingImage.decode(),
   ]);
   const painting = new THREE.Texture(paintingImage);
@@ -46,8 +45,11 @@ async function prepareViewer(progress) {
     document.fonts.load('italic 16px Baskervville'),
   ]);
   RectAreaLightUniformsLib.init();
-  const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting, inferred, galleryImage);
+  const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting, inferred);
   setupOverlays(viewer, calibration);
+  // La galería se carga en segundo plano: no bloquea la entrada al museo.
+  const lite = matchMedia('(hover: none) and (pointer: coarse)').matches;
+  setTimeout(() => viewer.museum.gallery.load(BASE, { lite }), 2500);
   return setupControls(viewer, calibration);
 }
 

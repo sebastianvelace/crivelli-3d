@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createMuseumMaterials } from './museumMaterials.js';
+import { createGallery } from './gallery.js';
 
 /** La cámara del pintor nunca dibuja esta capa. */
 export const MUSEUM_LAYER = 2;
@@ -8,7 +9,7 @@ export const SKYLIGHT_HEIGHT = 6.75;
 export const BENCH = { x: 0, fromPainting: 3.75, width: 1.8, depth: 0.45 };
 
 /** Construye la sala alrededor de la ventana de Alberti calibrada. */
-export function createMuseum(space, calib, paintingTexture, galleryImage) {
+export function createMuseum(space, calib, paintingTexture) {
   const group = new THREE.Group();
   group.name = 'museum';
   const d = calib.panelWidthCm / 100 / (space.W / space.f);
@@ -52,7 +53,9 @@ export function createMuseum(space, calib, paintingTexture, galleryImage) {
   addVault(group, z, mid, materials.ceiling);
   addStonework(group, z, mid, materials.stone);
   addAnnex(group, width, materials);
-  if (galleryImage) group.add(createGalleryArtwork(galleryImage, materials.gold, mid));
+  const housing = new THREE.MeshStandardMaterial({ color: '#52585d', metalness: 0.55, roughness: 0.48 });
+  const gallery = createGallery(materials.gold, housing);
+  group.add(gallery.group);
 
   const frame = createFrame(cx, cy, z, panelW, panelH, frameWidth, materials.gold);
   group.add(frame);
@@ -82,7 +85,7 @@ export function createMuseum(space, calib, paintingTexture, galleryImage) {
   shadowLight.shadow.camera.layers.set(MUSEUM_LAYER);
 
   return {
-    group, panel, portal, marker, plaque, shadowLight,
+    group, panel, portal, marker, plaque, shadowLight, gallery,
     windowDistance: d,
     aperture: { x0: tl.x, x1: br.x, y0: br.y, y1: tl.y, z },
     startPose: { position: new THREE.Vector3(1.7, 1.66, 5.35), target: new THREE.Vector3(cx, cy + 0.47, z) },
@@ -249,30 +252,6 @@ function createBench(z) {
     for (const localZ of [-0.146, 0.146]) bench.add(box(0.086, 0.31, 0.08, wood, x, 0.155, localZ, true));
   }
   return bench;
-}
-
-function createGalleryArtwork(image, frameMaterial, z) {
-  const height = 1.505;
-  const width = 1.073;
-  const canvas = document.createElement('canvas');
-  canvas.height = 256;
-  canvas.width = Math.round(canvas.height * image.naturalWidth / image.naturalHeight);
-  const context = canvas.getContext('2d');
-  context.imageSmoothingQuality = 'high';
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-  const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height),
-    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
-  panel.position.z = 0.008;
-  panel.name = 'madonna-rondine';
-  const frame = box(width + 0.085, height + 0.085, 0.042, frameMaterial, 0, 0, -0.017);
-  const artwork = new THREE.Group();
-  artwork.position.set(ROOM.x0 + 0.05, 1.56, z);
-  artwork.rotation.y = Math.PI / 2;
-  artwork.add(frame, panel);
-  return artwork;
 }
 
 function addGalleryLighting(room, x, y, z, mid) {

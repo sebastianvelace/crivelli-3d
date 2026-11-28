@@ -142,7 +142,32 @@ La sala se inspira en la [Sala 59 de la National Gallery](https://www.nationalga
 
 En Chrome a 1920 × 1080 con SwiftShader se midieron **79 llamadas de dibujo** y **1,0 fps** durante el muestreo inicial de la sala. Se activó la reducción automática a una escala de píxel de 1, sin sombras, con **72 llamadas de dibujo**. La meta de 60 fps en GPU integrada queda pendiente de una prueba en ese equipo. La sala usa un único mapa de sombras de 1024 × 1024 con filtro PCF, compatible con la versión de Three.js del proyecto.
 
-El muro lateral muestra *La Madonna della Rondine* (NG724.1), de Carlo Crivelli, en una [reproducción de dominio público](https://commons.wikimedia.org/wiki/File:La_Madonna_della_Rondine_\(The_Madonna_of_the_Swallow\).jpg) de 1024 px de alto. El museo usa una textura reducida de 256 px de alto para esta pieza. Las texturas de la sala suman aproximadamente 2,96 MB en RGBA antes de mipmaps.
+El Crivelli cuelga solo en el muro principal, con su foco propio y aire a su alrededor. Los muros laterales y el muro posterior forman una galería decorativa de 12 obras del Renacimiento italiano (`src/scene/gallery.js`). Esas obras no se abren, no tienen modo Ojo ni mediciones.
+
+- **Imágenes:** copias en `public/gallery/` en WebP, de 1600 px como máximo en el lado largo (sin ampliar las más pequeñas). La *Madonna della Rondine* ya no se rasteriza a 256 px: usa la misma copia de 1600 px.
+- **Carga diferida:** la sala y la calle se construyen sin esperar a las imágenes. Unos 2,5 s después de abrir el visor, las obras se cargan una por una en segundo plano (con una pausa corta entre cada una para no causar tirones). En pantallas táctiles no se cargan las del muro posterior.
+- **Luz:** cada obra tiene un foco de riel visible apuntando a ella y un halo cálido aditivo sobre el muro. Son materiales, no luces: la sala conserva una única luz con sombras (la del Crivelli) y ninguna obra lateral proyecta sombra. Es una decisión de rendimiento; la contrapartida es que el foco no ilumina de verdad el cuadro ni el muro.
+- **Materiales:** pinturas, cédulas y halos usan `toneMapped: false`; la anisotropía es 4.
+- **Cédulas:** tipografía Baskervville en un canvas de 800 × 468 px. La medida real solo se escribe cuando se conoce con certeza (Crivelli, *Rondine* y la reducción de la *Trinidad*); en las demás obras la cédula dice «Escala de exhibición aproximada».
+
+#### Obras de la galería
+
+Todas son reproducciones de dominio público (Wikimedia Commons).
+
+| Autor | Obra | Fecha | Colección | Archivo en Commons |
+|---|---|---|---|---|
+| Carlo Crivelli | *La Madonna della Rondine* | Después de 1490 | The National Gallery, Londres · NG724.1 | [La Madonna della Rondine (The Madonna of the Swallow).jpg](https://commons.wikimedia.org/wiki/File:La_Madonna_della_Rondine_%28The_Madonna_of_the_Swallow%29.jpg) |
+| Paolo Uccello | *Milagro de la hostia profanada (escena 1)* | 1465–1469 | Galleria Nazionale delle Marche, Urbino | [Paolo Uccello - Miracle of the Desecrated Host (Scene 1) - WGA23222.jpg](https://commons.wikimedia.org/wiki/File:Paolo_Uccello_-_Miracle_of_the_Desecrated_Host_%28Scene_1%29_-_WGA23222.jpg) |
+| Piero della Francesca | *La flagelación de Cristo* | Hacia 1455–1460 | Galleria Nazionale delle Marche, Urbino | [Piero della Francesca 042.jpg](https://commons.wikimedia.org/wiki/File:Piero_della_Francesca_042.jpg) |
+| Masaccio | *La Trinidad* | 1425–1428 | Santa Maria Novella, Florencia | [Masaccio, trinità.jpg](https://commons.wikimedia.org/wiki/File:Masaccio,_trinit%C3%A0.jpg) |
+| Leonardo da Vinci | *Estudio de perspectiva para la Adoración de los Magos* | 1481 | Gallerie degli Uffizi, Florencia | [Leonardo, Studio per l'Adorazione dei Magi, Uffizi.jpg](https://commons.wikimedia.org/wiki/File:Leonardo,_Studio_per_l%27Adorazione_dei_Magi,_Uffizi.jpg) |
+| Giovanni Bellini | *La agonía en el huerto* | Hacia 1458–1460 | The National Gallery, Londres · NG726 | [Bellini,Giovanni - Agony in the Garden - National Gallery.jpg](https://commons.wikimedia.org/wiki/File:Bellini,Giovanni_-_Agony_in_the_Garden_-_National_Gallery.jpg) |
+| Andrea Mantegna | *La agonía en el huerto* | Hacia 1455–1456 | The National Gallery, Londres | [Mantegna, Andrea - Agony in the Garden - National Gallery, London.jpg](https://commons.wikimedia.org/wiki/File:Mantegna,_Andrea_-_Agony_in_the_Garden_-_National_Gallery,_London.jpg) |
+| Antonello da Messina | *San Jerónimo en su estudio* | Hacia 1475 | The National Gallery, Londres · NG1418 | [Antonello da Messina - St Jerome in his study - National Gallery London.jpg](https://commons.wikimedia.org/wiki/File:Antonello_da_Messina_-_St_Jerome_in_his_study_-_National_Gallery_London.jpg) |
+| Duccio di Buoninsegna | *La Última Cena (reverso de la Maestà)* | 1308–1311 | Museo dell'Opera del Duomo, Siena | [Duccio di Buoninsegna - Last Supper - WGA06786.jpg](https://commons.wikimedia.org/wiki/File:Duccio_di_Buoninsegna_-_Last_Supper_-_WGA06786.jpg) |
+| Carlo Crivelli | *Retablo Demidoff* | sin fecha indicada | The National Gallery, Londres | [Carlo Crivelli 005.jpg](https://commons.wikimedia.org/wiki/File:Carlo_Crivelli_005.jpg) |
+| Cima da Conegliano | *La incredulidad de santo Tomás* | 1502–1504 | The National Gallery, Londres · NG816 | [Cima da Conegliano London NG Incredulita STommaso 1504.jpg](https://commons.wikimedia.org/wiki/File:Cima_da_Conegliano_London_NG_Incredulita_STommaso_1504.jpg) |
+| Andrea Mantegna | *La Virgen con el Niño, la Magdalena y san Juan Bautista* | Hacia 1490–1505 | The National Gallery, Londres · NG274 | [Andrea Mantegna 107.jpg](https://commons.wikimedia.org/wiki/File:Andrea_Mantegna_107.jpg) |
 
 | | |
 | --- | --- |
@@ -338,6 +363,7 @@ src/
   app/tour.js                 recorrido guiado
   app/measure.js              herramienta de medición y mediciones sugeridas
   scene/museum.js             sala de museo con el cuadro como ventana de Alberti
+  scene/gallery.js            obras decorativas, marcos, cédulas y focos de la galería
   main.js, style.css, viewer.css   portada, controles del visor y superposiciones HTML
 docs/                         capturas para la presentación
 RESENA.md                     reseña de una página (objetivo y relación con Galileo)

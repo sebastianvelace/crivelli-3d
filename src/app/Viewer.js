@@ -21,7 +21,7 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) 
  *   'model' -> "maqueta": vista casi isométrica, como la reconstrucción de la Flagelación.
  */
 export class Viewer {
-  constructor(container, calibration, sceneData, paintingTexture, inferred, galleryImage) {
+  constructor(container, calibration, sceneData, paintingTexture, inferred) {
     this.container = container;
     this.calib = calibration;
     this.space = new PictureSpace(calibration);
@@ -78,7 +78,7 @@ export class Viewer {
 
     this.buildPicture(sceneData, inferred);
     this.buildHelpers(paintingTexture);
-    this.museum = createMuseum(this.space, calibration, paintingTexture, galleryImage);
+    this.museum = createMuseum(this.space, calibration, paintingTexture);
     this.scene.add(this.museum.group);
     this.eyeBacking = new THREE.Mesh(this.museum.panel.geometry, new THREE.MeshBasicMaterial({
       map: paintingTexture, toneMapped: false, depthWrite: false, depthTest: false,
