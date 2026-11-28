@@ -146,8 +146,8 @@ El Crivelli cuelga solo en el muro principal, con su foco propio y aire a su alr
 
 - **Imágenes:** copias en `public/gallery/` en WebP, de 1600 px como máximo en el lado largo (sin ampliar las más pequeñas). La *Madonna della Rondine* ya no se rasteriza a 256 px: usa la misma copia de 1600 px.
 - **Carga diferida:** la sala y la calle se construyen sin esperar a las imágenes. Unos 2,5 s después de abrir el visor, las obras se cargan una por una en segundo plano (con una pausa corta entre cada una para no causar tirones). En pantallas táctiles no se cargan las del muro posterior.
-- **Luz:** cada obra tiene un foco de riel visible apuntando a ella y un halo cálido aditivo sobre el muro. Son materiales, no luces: la sala conserva una única luz con sombras (la del Crivelli) y ninguna obra lateral proyecta sombra. Es una decisión de rendimiento; la contrapartida es que el foco no ilumina de verdad el cuadro ni el muro.
-- **Materiales:** pinturas, cédulas y halos usan `toneMapped: false`; la anisotropía es 4.
+- **Luz:** cada obra tiene un foco de riel visible apuntando a ella. Es un modelo, no una luz: la sala conserva una única luz con sombras (la del Crivelli) y ninguna obra lateral proyecta sombra. Es una decisión de rendimiento; la contrapartida es que el foco no ilumina de verdad el cuadro.
+- **Materiales:** pinturas y cédulas usan `toneMapped: false`; la anisotropía es 4.
 - **Cédulas:** tipografía Baskervville en un canvas de 800 × 468 px. La medida real solo se escribe cuando se conoce con certeza (Crivelli, *Rondine* y la reducción de la *Trinidad*); en las demás obras la cédula dice «Escala de exhibición aproximada».
 
 #### Obras de la galería

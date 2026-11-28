@@ -168,34 +168,15 @@ function createFrameGeometry(width, height, lip) {
   return geometry;
 }
 
-function createGlowTexture() {
-  const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-  const gradient = ctx.createRadialGradient(64, 64, 4, 64, 64, 64);
-  gradient.addColorStop(0, 'rgba(255, 214, 160, 0.55)');
-  gradient.addColorStop(0.55, 'rgba(255, 206, 150, 0.2)');
-  gradient.addColorStop(1, 'rgba(255, 200, 140, 0)');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 128, 128);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 /**
  * Galería decorativa. Las obras no se pueden abrir ni medir y ningún elemento proyecta sombra.
- * Cada obra tiene su foco de riel (modelo visible) y un halo aditivo sobre el muro: así la sala
- * no suma luces con sombra ni más luces reales al presupuesto del cuadro principal.
+ * Cada obra tiene su foco de riel (modelo visible), sin luces reales adicionales:
+ * así la sala no suma luces con sombra al presupuesto del cuadro principal.
  */
 export function createGallery(frameMaterial, housing) {
   const group = new THREE.Group();
   group.name = 'museum-gallery';
   const lens = new THREE.MeshBasicMaterial({ color: '#fff2d9', toneMapped: false });
-  const glowTexture = createGlowTexture();
-  const glowMaterial = new THREE.MeshBasicMaterial({
-    map: glowTexture, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false,
-  });
   const cylinder = new THREE.CylinderGeometry(0.05, 0.058, 0.14, 16);
   const face = new THREE.CircleGeometry(0.046, 16);
   const stem = new THREE.BoxGeometry(0.03, 0.19, 0.03);
@@ -235,9 +216,7 @@ export function createGallery(frameMaterial, housing) {
     panel.name = `obra-${work.id}`;
     const frame = new THREE.Mesh(createFrameGeometry(width, height, lip), frameMaterial);
     frame.position.z = -0.004;
-    const glow = new THREE.Mesh(new THREE.PlaneGeometry(width + 1.5, height + 1.2), glowMaterial);
-    glow.position.z = -0.011;
-    artwork.add(glow, frame, panel);
+    artwork.add(frame, panel);
 
     const label = createLabel(work);
     if (height > 1.0) label.position.set(width / 2 + lip + 0.24, -height / 2 + 0.55, 0.003);
