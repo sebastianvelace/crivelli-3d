@@ -79,7 +79,9 @@ Cada elemento de `scene.json` lleva:
 - `evidence`: `measured` o `assumed`, con una `note` que explica el supuesto.
 - `fill`: la regla para completar lo oculto en el modo inferido.
 
-**Un intento descartado: la regla de las baldosas.** Se probó completar el piso oculto repitiendo una baldosa real rectificada, con su tamaño medido (36 cm), una de las 8 simetrías del cuadrado en cada celda y las juntas dibujadas por regla. La geometría era correcta, pero el tono de la baldosa repetida no coincide con el piso pintado, porque Crivelli sombrea el piso de manera continua. El resultado: al caminar se veía el contorno de cada figura dibujado en el piso. Una regla geométrica correcta no alcanza si la *apariencia* no sigue la misma regla, así que el piso volvió a quedar neutro. El código sigue en `infer.py` (`fill: "tiles"`) para documentar el experimento.
+El suavizado de los bordes en modo yeso queda para una revisión aparte. Esta entrega conserva el sombreado proyectivo de referencia.
+
+**Un intento descartado: la regla de las baldosas.** Se probó completar el piso oculto repitiendo una baldosa real rectificada, con su ancho derivado de la escala (36 cm), una de las 8 simetrías del cuadrado en cada celda y las juntas dibujadas por regla. La geometría era correcta, pero el tono de la baldosa repetida no coincide con el piso pintado, porque Crivelli sombrea el piso de manera continua. El resultado: al caminar se veía el contorno de cada figura dibujado en el piso. Una regla geométrica correcta no alcanza si la *apariencia* no sigue la misma regla, así que el piso volvió a quedar neutro. El código sigue en `infer.py` (`fill: "tiles"`) para documentar el experimento.
 
 El modo inferido rellena el resto **por continuidad (inpainting)**: El resto se rellena con *Frequency Selective Reconstruction* (OpenCV xphoto), que reconstruye textura y no solo color, a partir de lo visto en el mismo plano. Lejos de los datos (más de ~0,5 m) el relleno se funde con el color medio del elemento: ahí cualquier detalle sería inventado.
 
@@ -140,7 +142,9 @@ Un portal de stencil restringe el dibujo de la calle al interior del marco cuand
 
 La sala se inspira en la [Sala 59 de la National Gallery](https://www.nationalgallery.org.uk/visiting/floorplans/level-2/room-59) y en las molduras de pietra serena del [ala Sainsbury](https://www.nationalgallery.org.uk/about-us/press-and-media/press-releases-archive/a-world-class-welcome-to-the-national-gallery-as-sainsbury-wing-reopens-after-two-years-of-closure). Tiene piso de roble, luz difusa desde el lucernario, un vano hacia una segunda sala y una banca con colisión. Las texturas se generan localmente. La cédula se dibuja a 2048 px y se reduce a 640 px antes de subirla a la GPU para respetar el presupuesto.
 
-En Chrome a 1920 × 1080 con SwiftShader se midieron **79 llamadas de dibujo** y **1,45 fps** durante el muestreo inicial. Se activó la reducción automática a una escala de píxel de 1, sin sombras, con **72 llamadas de dibujo**. La meta de 60 fps en GPU integrada queda pendiente de una prueba en ese equipo. La sala usa un único mapa de sombras de 1024 × 1024 con filtro PCF, compatible con la versión de Three.js del proyecto. Las texturas de la sala ocupan aproximadamente 2,77 MB en RGBA antes de mipmaps.
+En Chrome a 1920 × 1080 con SwiftShader se midieron **79 llamadas de dibujo** y **1,0 fps** durante el muestreo inicial de la sala. Se activó la reducción automática a una escala de píxel de 1, sin sombras, con **72 llamadas de dibujo**. La meta de 60 fps en GPU integrada queda pendiente de una prueba en ese equipo. La sala usa un único mapa de sombras de 1024 × 1024 con filtro PCF, compatible con la versión de Three.js del proyecto.
+
+El muro lateral muestra *La Madonna della Rondine* (NG724.1), de Carlo Crivelli, en una [reproducción de dominio público](https://commons.wikimedia.org/wiki/File:La_Madonna_della_Rondine_\(The_Madonna_of_the_Swallow\).jpg) de 1024 px de alto. El museo usa una textura reducida de 256 px de alto para esta pieza. Las texturas de la sala suman aproximadamente 2,96 MB en RGBA antes de mipmaps.
 
 | | |
 | --- | --- |

@@ -8,7 +8,7 @@ export const SKYLIGHT_HEIGHT = 6.75;
 export const BENCH = { x: 0, fromPainting: 3.75, width: 1.8, depth: 0.45 };
 
 /** Construye la sala alrededor de la ventana de Alberti calibrada. */
-export function createMuseum(space, calib, paintingTexture) {
+export function createMuseum(space, calib, paintingTexture, galleryImage) {
   const group = new THREE.Group();
   group.name = 'museum';
   const d = calib.panelWidthCm / 100 / (space.W / space.f);
@@ -52,6 +52,7 @@ export function createMuseum(space, calib, paintingTexture) {
   addVault(group, z, mid, materials.ceiling);
   addStonework(group, z, mid, materials.stone);
   addAnnex(group, width, materials);
+  if (galleryImage) group.add(createGalleryArtwork(galleryImage, materials.gold, mid));
 
   const frame = createFrame(cx, cy, z, panelW, panelH, frameWidth, materials.gold);
   group.add(frame);
@@ -250,6 +251,30 @@ function createBench(z) {
   return bench;
 }
 
+function createGalleryArtwork(image, frameMaterial, z) {
+  const height = 1.505;
+  const width = 1.073;
+  const canvas = document.createElement('canvas');
+  canvas.height = 256;
+  canvas.width = Math.round(canvas.height * image.naturalWidth / image.naturalHeight);
+  const context = canvas.getContext('2d');
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = 4;
+  const panel = new THREE.Mesh(new THREE.PlaneGeometry(width, height),
+    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
+  panel.position.z = 0.008;
+  panel.name = 'madonna-rondine';
+  const frame = box(width + 0.085, height + 0.085, 0.042, frameMaterial, 0, 0, -0.017);
+  const artwork = new THREE.Group();
+  artwork.position.set(ROOM.x0 + 0.05, 1.56, z);
+  artwork.rotation.y = Math.PI / 2;
+  artwork.add(frame, panel);
+  return artwork;
+}
+
 function addGalleryLighting(room, x, y, z, mid) {
   const sky = new THREE.RectAreaLight('#f4f1ea', 5, 5.3, 3.6);
   sky.position.set(0, SKYLIGHT_HEIGHT - 0.08, mid);
@@ -294,15 +319,15 @@ function addGalleryLighting(room, x, y, z, mid) {
 
 function createPlaque() {
   const lines = [
-    ['Carlo Crivelli', 120, 115],
-    ['Hacia 1430/1435 – hacia 1494', 60, 240],
-    ['La Anunciación, con san Emigdio, 1486', 82, 390, true],
-    ['Temple al huevo con algo de óleo sobre lienzo', 61, 555],
-    ['207 × 146,7 cm', 61, 652],
-    ['Donado por Lord Taunton, 1864 · NG739', 61, 812],
-    ['The National Gallery, Londres', 61, 910],
-    ['Pintada para el convento de la Anunziata de Ascoli Piceno.', 54, 1125],
-    ['La calle fuga hacia un único punto, a la altura del ojo del pintor.', 54, 1223],
+    ['Carlo Crivelli', 126, 115],
+    ['Hacia 1430/1435 – hacia 1494', 76, 245],
+    ['La Anunciación, con san Emigdio, 1486', 92, 390, true],
+    ['Temple al huevo con algo de óleo sobre lienzo', 82, 555],
+    ['207 × 146,7 cm', 82, 652],
+    ['Donado por Lord Taunton, 1864 · NG739', 82, 812],
+    ['The National Gallery, Londres', 82, 910],
+    ['Pintada para el convento de la Anunziata de Ascoli Piceno.', 72, 1125],
+    ['La calle fuga hacia un único punto, a la altura del ojo del pintor.', 72, 1223],
   ];
   const canvas = document.createElement('canvas');
   canvas.width = 2048;
@@ -310,7 +335,7 @@ function createPlaque() {
   const ctx = canvas.getContext('2d');
   ctx.fillStyle = '#efebe2';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#282928';
+  ctx.fillStyle = '#1b1b1a';
   ctx.textBaseline = 'top';
   for (const [line, size, y, italic] of lines) {
     ctx.font = `${italic ? 'italic ' : ''}${size}px Baskervville, Georgia, serif`;
