@@ -132,9 +132,13 @@ Las dos referencias humanas difieren en 3,2 cm y su media de **1,513 m** fija la
 
 ### El museo y la ventana de Alberti (`src/scene/museum.js`)
 
-El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. Mide 146,5 cm de ancho, está a 111 cm del ojo y tiene el punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. El anillo y la cartela señalan el punto en el piso, y una esfera indica la altura del ojo. La maqueta conserva la línea vertical auxiliar para leer esa altura respecto del suelo.
+El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. El visor conserva un ancho de calibración de 146,5 cm, una distancia de 111 cm al ojo y un punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. El anillo y la cartela señalan el punto en el piso, y una esfera indica la altura del ojo. La maqueta conserva la línea vertical auxiliar para leer esa altura respecto del suelo.
 
 Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. El mapa de profundidad de la pintura se calcula por separado. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. Entre el marco y el piso pintado hay un pequeño umbral de yeso marcado como `assumed`, visible desde la calle y excluido del mapa de profundidad. En órbita y maqueta se ocultan la sala y el portal.
+
+La sala se inspira en la [Sala 59 de la National Gallery](https://www.nationalgallery.org.uk/visiting/floorplans/level-2/room-59) y en las molduras de pietra serena del [ala Sainsbury](https://www.nationalgallery.org.uk/about-us/press-and-media/press-releases-archive/a-world-class-welcome-to-the-national-gallery-as-sainsbury-wing-reopens-after-two-years-of-closure). Tiene piso de roble, luz difusa desde el lucernario, un vano hacia una segunda sala y una banca con colisión. Las texturas se generan localmente. La cédula se dibuja a 2048 px y se reduce a 640 px antes de subirla a la GPU para respetar el presupuesto.
+
+En Chrome a 1920 × 1080 con SwiftShader se midieron **79 llamadas de dibujo** y **1,45 fps** durante el muestreo inicial. Se activó la reducción automática a una escala de píxel de 1, sin sombras, con **72 llamadas de dibujo**. La meta de 60 fps en GPU integrada queda pendiente de una prueba en ese equipo. La sala usa un único mapa de sombras de 1024 × 1024 con filtro PCF, compatible con la versión de Three.js del proyecto. Las texturas de la sala ocupan aproximadamente 2,77 MB en RGBA antes de mipmaps.
 
 | | |
 | --- | --- |
@@ -147,7 +151,7 @@ Un portal de stencil restringe el dibujo de la calle al interior del marco cuand
 
 - Archivo: `analysis/source/crivelli_ng739.jpg` (2996 × 4226 px). Para la web se usa una copia reducida, `public/painting/crivelli_ng739_2048.jpg`.
 - Fuente: Wikimedia Commons, [*The Annunciation, with Saint Emidius - Carlo Crivelli - National Gallery.jpg*](https://commons.wikimedia.org/wiki/File:The_Annunciation,_with_Saint_Emidius_-_Carlo_Crivelli_-_National_Gallery.jpg). Crédito: National Gallery. Licencia: **dominio público**.
-- Medidas del panel según esa ficha: 207 × 146,5 cm.
+- La National Gallery registra 207 × 146,7 cm y fecha al pintor hacia 1430/1435 – hacia 1494. El ancho de calibración de 146,5 cm procede de la ficha de la reproducción. [Ficha de la obra](https://www.nationalgallery.org.uk/paintings/carlo-crivelli-the-annunciation-with-saint-emidius)
 
 ---
 

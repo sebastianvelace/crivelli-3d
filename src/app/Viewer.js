@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PictureSpace, resolvePlanes, buildElementGeometry } from '../core/pictureSpace.js';
 import { createProjectiveMaterial, createSharedUniforms, FILL_MODES } from '../core/projectiveMaterial.js';
 import { createPainterCamera, VisitorCamera } from '../core/cameras.js';
 import { createPerspectiveHelpers, createEyeMarker, HELPER_LAYER } from '../scene/perspectiveHelpers.js';
-import { createMuseum, MUSEUM_LAYER, ROOM } from '../scene/museum.js';
+import { createMuseum, MUSEUM_LAYER, ROOM, SKYLIGHT_HEIGHT } from '../scene/museum.js';
 import { constrainWalk } from './walkBounds.js';
 
 const PAINTER_NEAR = 0.3;
@@ -34,12 +35,25 @@ export class Viewer {
 
     // Renderer
     this.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true, stencil: true });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1;
+    this.renderer.shadowMap.enabled = true;
+    // Esta versión de three.js integra el filtrado suave en PCFShadowMap.
+    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.autoUpdate = false;
     container.appendChild(this.renderer.domElement);
 
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color('#17130f');
+    const distribution = new THREE.PMREMGenerator(this.renderer);
+    const roomLight = new RoomEnvironment();
+    this.environmentTarget = distribution.fromScene(roomLight, 0.035);
+    this.scene.environment = this.environmentTarget.texture;
+    this.scene.environmentIntensity = 0.4;
+    distribution.dispose();
+    roomLight.dispose();
 
     // Cámaras
     this.painterCamera = createPainterCamera(this.space, PAINTER_NEAR, PAINTER_FAR);
@@ -68,6 +82,7 @@ export class Viewer {
     this.buildThreshold();
     this.panelOpacity = 1;
     this.renderDepth();
+    this.renderer.shadowMap.needsUpdate = true;
 
     // Controles
     this.orbit = new OrbitControls(this.camera, this.renderer.domElement);
@@ -147,8 +162,8 @@ export class Viewer {
     // Aristas de evidencia (capa de ayudas, fuera de la proyección):
     // blanco = plano medido en la pintura, ámbar discontinuo = plano supuesto.
     this.evidenceEdges = new THREE.Group();
-    const edgeMeasured = new THREE.LineBasicMaterial({ color: 0xf3ead8, transparent: true, opacity: 0.45 });
-    const edgeAssumed = new THREE.LineDashedMaterial({ color: 0xffb000, dashSize: 0.12, gapSize: 0.08, transparent: true });
+    const edgeMeasured = new THREE.LineBasicMaterial({ color: 0xf3ead8, transparent: true, opacity: 0.45, toneMapped: false });
+    const edgeAssumed = new THREE.LineDashedMaterial({ color: 0xffb000, dashSize: 0.12, gapSize: 0.08, transparent: true, toneMapped: false });
     this.edgeMaterials = [[edgeMeasured, 0.45], [edgeAssumed, 1]];
 
     for (const el of sceneData.elements) {
@@ -159,6 +174,7 @@ export class Viewer {
         uBackColor: { value: new THREE.Color(info?.backColor ?? '#6e6456') },
         uInpaintInNeutral: { value: el.kind === 'figure' && !el.plasterInNeutral && !!inferred?.textures.has(el.id) },
       });
+      material.toneMapped = false;
       const mesh = new THREE.Mesh(geometry, material);
       mesh.name = el.id;
       mesh.userData = { label: el.label, kind: el.kind, evidence: el.evidence, seenFraction: info?.seenFraction };
@@ -180,7 +196,7 @@ export class Viewer {
     // space; algunos rasterizadores interpolan mal esa profundidad.)
     const ground = new THREE.Mesh(
       new THREE.PlaneGeometry(240, 240),
-      new THREE.MeshBasicMaterial({ color: '#2a241d', depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: '#2a241d', depthWrite: false, toneMapped: false }),
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(0, -0.02, -60);
@@ -197,7 +213,7 @@ export class Viewer {
     const floorStart = bounds.boundingBox.max.z;
     const threshold = new THREE.Mesh(
       new THREE.PlaneGeometry(x1 - x0, z - floorStart),
-      new THREE.MeshBasicMaterial({ color: '#827767', depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: '#827767', depthWrite: false, toneMapped: false }),
     );
     threshold.name = 'umbral_supuesto';
     threshold.userData.evidence = 'assumed';
@@ -464,13 +480,37 @@ export class Viewer {
     this.uniforms.uAtPainterEye.value = k > 1 - 1e-6;
     for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
     this.renderer.render(this.scene, this.camera);
+    this.sampleMuseumPerformance();
     this.onFrame?.(this);
+  }
+
+  sampleMuseumPerformance() {
+    if (this.museumPerformance) return;
+    const inMuseum = this.portalActive && this.camera.painterness === 0 &&
+      (this.mode === 'museum' || this.mode === 'walk' || this.mode === 'tour');
+    if (!inMuseum || document.hidden) {
+      this.museumSample = null;
+      return;
+    }
+    this.museumSample ??= { seconds: 0, frames: 0, calls: 0 };
+    const sample = this.museumSample;
+    sample.seconds += this.timer.getDelta();
+    sample.frames++;
+    sample.calls = Math.max(sample.calls, this.renderer.info.render.calls);
+    if (sample.seconds < 2) return;
+    const fps = sample.frames / sample.seconds;
+    const degraded = fps < 40;
+    if (degraded) {
+      this.renderer.shadowMap.enabled = false;
+      this.renderer.setPixelRatio(1);
+    }
+    this.museumPerformance = { fps, calls: sample.calls, degraded };
   }
 
   updatePortal() {
     const { x, y, z } = this.camera.position;
     const onMuseumSide = z >= this.museum.aperture.z;
-    const outsideRoom = onMuseumSide && (x < ROOM.x0 || x > ROOM.x1 || y < 0 || y > ROOM.h || z > ROOM.z1);
+    const outsideRoom = onMuseumSide && (x < ROOM.x0 || x > ROOM.x1 || y < 0 || y > SKYLIGHT_HEIGHT || z > ROOM.z1);
     const exterior = this.mode === 'orbit' || this.mode === 'model' ||
       (this.mode === 'transition' && this.exteriorTransition) || (this.mode === 'tour' && this.tourExterior);
     this.museum.group.visible = !outsideRoom && !exterior;

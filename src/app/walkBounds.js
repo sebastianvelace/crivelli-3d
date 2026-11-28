@@ -1,4 +1,4 @@
-import { ROOM } from '../scene/museum.js';
+import { BENCH, ROOM } from '../scene/museum.js';
 
 const WALL_CLEARANCE = 0.3;
 const STEP_TOP = -11.6;
@@ -29,7 +29,7 @@ export function constrainWalk(position, move, aperture, windowOpen) {
   const top = aperture.y1 - 0.06;
   const frontWall = aperture.z + 0.058;
   const backWall = aperture.z - 0.058;
-  const x = softLimit(position.x, move.x,
+  let x = softLimit(position.x, move.x,
     fromMuseum ? ROOM.x0 + WALL_CLEARANCE : position.z > -4.67 ? -2.2 : -1.55,
     fromMuseum ? ROOM.x1 - WALL_CLEARANCE : 0.60);
   const y = softLimit(position.y, move.y, 1.1, 2.6);
@@ -42,9 +42,25 @@ export function constrainWalk(position, move, aperture, windowOpen) {
   const inAperture = crossX >= left && crossX <= right && crossY >= bottom && crossY <= top;
   const canCross = windowOpen && inAperture;
   const approachingLeftWall = !fromMuseum && x < -1.55 && position.z > -4.67;
-  const z = softLimit(position.z, move.z,
+  let z = softLimit(position.z, move.z,
     fromMuseum ? (canCross ? STREET_END : frontWall) : approachingLeftWall ? -4.67 : STREET_END,
     fromMuseum || canCross ? ROOM.z1 - WALL_CLEARANCE : backWall);
+
+  if (fromMuseum) {
+    const benchZ = aperture.z + BENCH.fromPainting;
+    const x0 = BENCH.x - BENCH.width / 2 - WALL_CLEARANCE;
+    const x1 = BENCH.x + BENCH.width / 2 + WALL_CLEARANCE;
+    const z0 = benchZ - BENCH.depth / 2 - WALL_CLEARANCE;
+    const z1 = benchZ + BENCH.depth / 2 + WALL_CLEARANCE;
+    if (position.z > z0 && position.z < z1) {
+      if (position.x <= x0) x = softLimit(position.x, x - position.x, -Infinity, x0);
+      if (position.x >= x1) x = softLimit(position.x, x - position.x, x1, Infinity);
+    }
+    if (x > x0 && x < x1) {
+      if (position.z <= z0) z = softLimit(position.z, z - position.z, -Infinity, z0);
+      if (position.z >= z1) z = softLimit(position.z, z - position.z, z1, Infinity);
+    }
+  }
 
   const inThreshold = windowOpen && z > backWall && z < frontWall;
   position.x = inThreshold ? Math.max(left, Math.min(right, x)) : x;

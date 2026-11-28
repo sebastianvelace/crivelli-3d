@@ -31,19 +31,19 @@ export function createPerspectiveHelpers(space, calib, planes, paintingTexture) 
   windowGeo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2));
   const windowMesh = new THREE.Mesh(
     windowGeo,
-    new THREE.MeshBasicMaterial({ map: paintingTexture, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ toneMapped: false, map: paintingTexture, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false }),
   );
   group.add(windowMesh);
 
   const line = (points, color, opacity = 1) =>
     new THREE.Line(
       new THREE.BufferGeometry().setFromPoints(points),
-      new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity }),
+      new THREE.LineBasicMaterial({ toneMapped: false, color, transparent: opacity < 1, opacity }),
     );
   const segments = (pairs, color, opacity = 1) =>
     new THREE.LineSegments(
       new THREE.BufferGeometry().setFromPoints(pairs.flat()),
-      new THREE.LineBasicMaterial({ color, transparent: opacity < 1, opacity }),
+      new THREE.LineBasicMaterial({ toneMapped: false, color, transparent: opacity < 1, opacity }),
     );
 
   // Marco de la ventana y pirámide visual
@@ -58,7 +58,7 @@ export function createPerspectiveHelpers(space, calib, planes, paintingTexture) 
 
   // Ojo y punto de fuga
   const dot = (p, color, r) => {
-    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), new THREE.MeshBasicMaterial({ color }));
+    const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), new THREE.MeshBasicMaterial({ toneMapped: false, color }));
     m.position.copy(p);
     return m;
   };
@@ -102,11 +102,11 @@ export function createPerspectiveHelpers(space, calib, planes, paintingTexture) 
 /** Marcador del ojo para el modo maqueta (siempre visible en ese modo). */
 export function createEyeMarker(space) {
   const g = new THREE.Group();
-  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 14), new THREE.MeshBasicMaterial({ color: 0xffd400 }));
+  const eye = new THREE.Mesh(new THREE.SphereGeometry(0.09, 20, 14), new THREE.MeshBasicMaterial({ toneMapped: false, color: 0xffd400 }));
   eye.position.copy(space.eye);
   const pole = new THREE.Mesh(
     new THREE.CylinderGeometry(0.012, 0.012, space.eyeHeight, 8),
-    new THREE.MeshBasicMaterial({ color: 0xffd400 }),
+    new THREE.MeshBasicMaterial({ toneMapped: false, color: 0xffd400 }),
   );
   pole.position.set(0, space.eyeHeight / 2, 0);
   g.add(eye, pole);

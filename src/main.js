@@ -36,6 +36,12 @@ async function prepareViewer(progress) {
   painting.anisotropy = 8;
   painting.needsUpdate = true;
 
+  const [{ RectAreaLightUniformsLib }] = await Promise.all([
+    import('three/examples/jsm/lights/RectAreaLightUniformsLib.js'),
+    document.fonts.load('16px Baskervville'),
+    document.fonts.load('italic 16px Baskervville'),
+  ]);
+  RectAreaLightUniformsLib.init();
   const viewer = new Viewer(document.getElementById('app'), calibration, sceneData, painting, inferred);
   setupOverlays(viewer, calibration);
   return setupControls(viewer, calibration);

@@ -37,8 +37,8 @@ export class MeasureTool {
     this.raycaster = new THREE.Raycaster();
 
     this.markerGeo = new THREE.SphereGeometry(0.035, 16, 12);
-    this.markerMat = new THREE.MeshBasicMaterial({ color: 0xffd400, depthTest: false });
-    this.lineMat = new THREE.LineBasicMaterial({ color: 0xffd400, depthTest: false });
+    this.markerMat = new THREE.MeshBasicMaterial({ toneMapped: false, color: 0xffd400, depthTest: false });
+    this.lineMat = new THREE.LineBasicMaterial({ toneMapped: false, color: 0xffd400, depthTest: false });
 
     // Clic (no arrastre) sobre el canvas
     const el = viewer.renderer.domElement;
