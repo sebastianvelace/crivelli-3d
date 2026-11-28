@@ -2,16 +2,24 @@ import * as THREE from 'three';
 import { lookQuaternion } from './Viewer.js';
 import { PRESETS } from './measure.js';
 
+const STREET_COMPARISON = { pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1] };
+
 const STOPS = [
   { caption: 'La Anunciación cuelga en el museo a su tamaño real.', pose: 'museum', hold: 4 },
-  { caption: 'La marca amarilla señala el lugar desde donde Crivelli construyó la perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 4, hold: 2 },
+  { caption: 'La placa del piso señala el lugar desde donde Crivelli construyó la perspectiva.', pos: [0.4, 1.58, 1.65], look: [0, 0.3, 0], fov: 60, travel: 4, hold: 2 },
   { caption: 'Al llegar al ojo, el cuadro se abre. La calle coincide con la pintura.', pose: 'eye', travel: 3, hold: 5 },
-  { caption: 'La altura de Gabriel se supuso para fijar la escala; la de María es una predicción: sale 1,22 m de rodillas. Al fondo, el hombre del manto dorado mide 1,83 m: Crivelli no es del todo coherente.', pose: 'eye', measure: true, hold: 5 },
+  { caption: 'Las alturas del fraile y de Gabriel son supuestos para fijar la escala. A esa escala, la altura de María (1,22 m de rodillas) y la del hombre del manto dorado (1,83 m) son predicciones.', pose: 'eye', measure: true, hold: 5 },
   { caption: 'Entramos al cuadro. El piso de baldosas se vuelve un plano real.', pos: [0.05, 1.51, -1.65], look: [-0.2, 1.2, -8], travel: 4, hold: 2 },
   { caption: 'En el muro izquierdo se ven la escalera, el niño y las figuras del balcón.', pos: [-0.4, 1.9, -4.5], look: [-2, 2, -6.9], fov: 61, travel: 5, hold: 3 },
-  { caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', pos: [-0.58, 1.7, -9.5], look: [0.4, 1.2, -1], fill: 'fiel', travel: 4, hold: 3 },
-  { caption: 'En modo inferido, los fragmentos ocultos se completan a partir de la textura visible.', fill: 'inferido', hold: 4 },
-  { caption: 'La casa de María tiene una fachada, un techo de vigas y un cuarto detrás de las pilastras.', pos: [-0.4, 1.4, -2.3], look: [2.1, 1.3, -3.2], fill: 'neutro', travel: 5, hold: 3 },
+  { ...STREET_COMPARISON, caption: 'En modo fiel, los huecos muestran las superficies que Crivelli dejó fuera de la pintura.', fill: 'fiel', travel: 4, hold: 3 },
+  { ...STREET_COMPARISON, caption: 'En modo inferido, los fragmentos ocultos se completan a partir de la textura visible.', fill: 'inferido', hold: 4 },
+  {
+    caption: 'La casa de María tiene una fachada, un techo de vigas y un cuarto detrás de las pilastras.',
+    pos: [1.335, 1.36, -1.335], look: [1.64, 1.02, -3.11], fov: 59,
+    // Avanza por la calle y gira delante del muro derecho y de la fachada.
+    via: [[0.10, 1.55, -3.45], [0.36, 1.47, -1.65]],
+    fill: 'neutro', travel: 5, hold: 3,
+  },
   { caption: 'La maqueta deja ver cómo se distribuyen las fachadas, el arco y el fondo.', pos: [-38, 50, 58], look: [0.4, 3, -11], fov: 14, exterior: true, travel: 5, hold: 4 },
   { caption: 'Al volver al ojo, el espacio vuelve a ser la pintura.', pose: 'eye', travel: 5, hold: 3 },
 ];
@@ -58,7 +66,7 @@ export function createTour(viewer, measure, onUpdate) {
   function arrive(stop) {
     if (stop.pose === 'eye') viewer.openWindow();
     if (stop.measure) {
-      for (const id of ['maria', 'gabriel', 'hombre_dorado']) {
+      for (const id of ['maria', 'gabriel', 'fraile', 'hombre_dorado']) {
         measure.showPreset(PRESETS.find((preset) => preset.a[0] === id));
       }
     }
@@ -87,7 +95,10 @@ export function createTour(viewer, measure, onUpdate) {
     }
     const pose = poseFor(stage);
     if (stage.travel) {
-      viewer.animateTo({ ...pose, duration: stage.travel }, () => arrive(stage));
+      const path = stage.via && new THREE.CatmullRomCurve3([
+        viewer.camera.position.clone(), ...stage.via.map((point) => new THREE.Vector3(...point)), pose.position,
+      ]);
+      viewer.animateTo({ ...pose, path, duration: stage.travel }, () => arrive(stage));
       viewer.animation.paused = paused;
     } else {
       applyPose(pose);

@@ -284,6 +284,37 @@ body[data-mode='tour'][data-framing='stacked'] #hud :is(h2, p) { display: none; 
 
 #plan img { display: block; width: 100%; max-height: min(56dvh, 500px); object-fit: contain; background: var(--paper); }
 
+#plan-expand {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+#plan-dialog {
+  max-width: calc(100vw - 16px);
+  max-height: 100dvh;
+  padding: 0 12px 12px;
+  color: var(--shell-ink);
+  background: var(--shell);
+  border: 1px solid var(--shell-rule);
+  border-radius: 3px;
+}
+
+#plan-dialog::backdrop { background: rgb(26 18 12 / 0.84); }
+#plan-dialog .tools-header { min-height: 42px; margin-bottom: 6px; }
+
+#plan-dialog img {
+  display: block;
+  width: auto;
+  height: min(90dvh, calc(100dvh - 64px));
+  max-width: 100%;
+  object-fit: contain;
+  background: var(--paper);
+}
+
 .measure-label {
   position: absolute;
   top: 0;

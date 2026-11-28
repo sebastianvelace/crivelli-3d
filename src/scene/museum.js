@@ -324,7 +324,7 @@ function createPlaque() {
   texture.colorSpace = THREE.SRGBColorSpace;
   texture.anisotropy = 4;
   const plaque = new THREE.Mesh(new THREE.PlaneGeometry(0.30, 0.22),
-    new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }));
+    new THREE.MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false, toneMapped: false }));
   plaque.name = 'museum-plaque';
   return plaque;
 }

@@ -258,6 +258,16 @@ function setupControls(viewer, calib) {
   const settings = viewer.settings = {};
   const plan = document.getElementById('plan');
   const planImage = document.getElementById('plan-img');
+  const planExpand = document.getElementById('plan-expand');
+  const planDialog = document.getElementById('plan-dialog');
+  const planDialogImage = document.getElementById('plan-dialog-img');
+  planExpand.addEventListener('click', () => {
+    planDialogImage.src = planImage.src;
+    viewer.keys.clear();
+    if (viewer.pointerLock.isLocked) viewer.pointerLock.unlock();
+    planDialog.showModal();
+  });
+  planDialog.addEventListener('close', () => planExpand.focus());
   const overlay = document.getElementById('overlay');
   const applySettings = {
     fillMode: (value) => viewer.setFillMode(value),
@@ -326,7 +336,7 @@ function setupControls(viewer, calib) {
   viewer.emit();
 
   window.addEventListener('keydown', (event) => {
-    if (experience.hidden || experience.inert || document.getElementById('credits').open) return;
+    if (experience.hidden || experience.inert || planDialog.open || document.getElementById('credits').open) return;
     if (event.code === 'Escape' && openTool) showTool(null);
     else if (event.code === 'Escape' && tour.active) tour.stop();
     else if (event.code === 'KeyR' && !event.repeat && !event.target.closest?.('input, select, textarea')) viewer.returnToEye();

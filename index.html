@@ -130,8 +130,18 @@
           <h2>Planta del piso</h2>
           <button id="plan-close" class="text-button" type="button">Cerrar</button>
         </header>
-        <img id="plan-img" alt="Planta del piso de la calle obtenida con una homografía" />
+        <button id="plan-expand" type="button" aria-label="Ampliar planta del piso" aria-haspopup="dialog">
+          <img id="plan-img" alt="Planta del piso de la calle obtenida con una homografía" />
+        </button>
       </aside>
+
+      <dialog id="plan-dialog" aria-labelledby="plan-dialog-title">
+        <header class="tools-header">
+          <h2 id="plan-dialog-title">Planta del piso</h2>
+          <form method="dialog"><button class="text-button" type="submit" autofocus>Cerrar</button></form>
+        </header>
+        <img id="plan-dialog-img" alt="Planta del piso de la calle obtenida con una homografía" />
+      </dialog>
     </div>
 
     <dialog id="credits" aria-labelledby="credits-title">

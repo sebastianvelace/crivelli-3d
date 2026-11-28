@@ -32,7 +32,7 @@ npm run dev
 | *Maqueta* | Vista casi axonométrica de toda la reconstrucción |
 | *Opciones → Superficies ocultas* | Modo fiel, neutro (por defecto) o inferido |
 | *Medir* | Selecciona dos puntos para obtener una distancia en metros. Al caminar, apunta con la mira y selecciona cada punto con un clic. También hay mediciones sugeridas. |
-| *Opciones → Perspectiva y geometría* | Superponer la pintura, marcar lo inferido, ver aristas medidas y supuestas, líneas de fuga y planta reconstruida |
+| *Opciones → Perspectiva y geometría* | Superponer la pintura, marcar lo inferido, ver aristas medidas y supuestas, líneas de fuga y planta reconstruida. Haz clic en la planta para ampliarla. |
 | *Recorrido guiado* | 11 paradas en 73 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
 | *Opciones* | Perspectiva aérea dentro de «Perspectiva y geometría», captura PNG y créditos |
 
@@ -113,12 +113,13 @@ Es la idea central de la *single view metrology* de Criminisi: cada clic es un r
 | Ancho de la calle | 2,30 m |
 | La Virgen, arrodillada | 1,22 m |
 | Gabriel, arrodillado | 1,23 m |
+| Fraile, de pie | 1,63 m |
 | Hombre del manto dorado, de pie (a 12 m del ojo) | 1,83 m |
 | Profundidad del cuarto de María | 1,57 m |
 | Alto del techo del cuarto | 2,03 m |
 | Puente sobre la plataforma | 7,23 m |
 
-Las etiquetas distinguen los **supuestos** de escala (Gabriel y la baldosa) y las **predicciones** del modelo. Los 36 cm de la baldosa que muestra el visor corresponden a la escala vigente. La validación usa 29,2 cm como un supuesto alternativo.
+Las etiquetas muestran las alturas **supuestas** para fijar la escala (fraile de pie, 1,65 m y Gabriel arrodillado, 1,20 m) junto a las longitudes de los segmentos trazados sobre sus recortes. La baldosa de 36 cm es una **predicción** a partir de esa escala. La validación cruza el resultado con un supuesto alternativo de 29,2 cm para la baldosa.
 
 ## Validación cruzada
 
@@ -133,7 +134,7 @@ Las dos referencias humanas difieren en 3,2 cm y su media de **1,513 m** fija la
 
 ### El museo y la ventana de Alberti (`src/scene/museum.js`)
 
-El cuadro de la sala no está colocado a ojo: es la ventana de Alberti calculada. El visor conserva un ancho de calibración de 146,5 cm, una distancia de 111 cm al ojo y un punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo, el cuadro se vuelve transparente sin que la imagen cambie. El anillo y la cartela señalan el punto en el piso, y una esfera indica la altura del ojo. La maqueta conserva la línea vertical auxiliar para leer esa altura respecto del suelo.
+El cuadro de la sala funciona como la ventana de Alberti calculada. El visor conserva un ancho de calibración de 146,5 cm, una distancia de 111 cm al ojo y un punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo se oculta la cédula y el cuadro se abre. La placa de latón y el anillo señalan el punto en el piso. La maqueta conserva la línea vertical auxiliar y la esfera para leer la altura del ojo respecto del suelo.
 
 Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. El mapa de profundidad de la pintura se calcula por separado. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. Entre el marco y el piso pintado hay un pequeño umbral de yeso marcado como `assumed`, visible desde la calle y excluido del mapa de profundidad. En órbita y maqueta se ocultan la sala y el portal.
 

@@ -111,7 +111,7 @@ export class Viewer {
     // Teclas apretadas. Si la ventana pierde el foco (Esc del pointer lock, cambio
     // de pestaña, clic en el panel) el navegador no envía "keyup" y la tecla quedaría
     // apretada para siempre: por eso se vacía el conjunto en esos casos.
-    const typing = (e) => e.target instanceof HTMLElement && e.target.closest('input, select, textarea');
+    const typing = (e) => e.target instanceof HTMLElement && e.target.closest('input, select, textarea, dialog[open]');
     window.addEventListener('keydown', (e) => {
       if (!typing(e) && !e.repeat) this.keys.add(e.code);
     });
@@ -269,12 +269,13 @@ export class Viewer {
   }
 
   /** Anima posición, orientación, "painterness" y FOV. */
-  animateTo({ position, quaternion, painterness, fov, duration = 2.5, onProgress }, onDone) {
+  animateTo({ position, quaternion, painterness, fov, path, duration = 2.5, onProgress }, onDone) {
     this.orbit.enabled = false;
     if (this.pointerLock.isLocked) this.pointerLock.unlock();
     this.animation = {
       t: 0,
       duration,
+      path,
       from: {
         position: this.camera.position.clone(),
         quaternion: this.camera.quaternion.clone(),
@@ -438,7 +439,8 @@ export class Viewer {
       const a = this.animation;
       a.t = Math.min(1, a.t + dt / a.duration);
       const e = easeInOut(a.t);
-      this.camera.position.lerpVectors(a.from.position, a.to.position, e);
+      if (a.path) a.path.getPointAt(e, this.camera.position);
+      else this.camera.position.lerpVectors(a.from.position, a.to.position, e);
       this.camera.quaternion.slerpQuaternions(a.from.quaternion, a.to.quaternion, e);
       // El frustum cambia al final del viaje: así el "clic" de la pintura llega al llegar.
       const pe = a.to.painterness > a.from.painterness ? easeInOut(Math.max(0, (a.t - 0.35) / 0.65)) : easeInOut(Math.min(1, a.t / 0.6));
@@ -475,6 +477,8 @@ export class Viewer {
     // Las aristas de evidencia se desvanecen al llegar al ojo: ahí manda la pintura.
     const k = this.eyeFactor();
     this.uniforms.uAtPainterEye.value = k > 1 - 1e-6;
+    this.museum.plaque.material.opacity = 1 - THREE.MathUtils.smoothstep(k, 0.85, 0.95);
+    this.museum.plaque.visible = k < 0.95;
     for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
     this.renderer.render(this.scene, this.camera);
     this.sampleMuseumPerformance();

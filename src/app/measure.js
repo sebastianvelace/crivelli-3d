@@ -14,10 +14,11 @@ import { HELPER_LAYER } from '../scene/perspectiveHelpers.js';
  * y el elemento sobre el cual se proyecta.
  */
 export const PRESETS = [
-  { name: 'Ancho de una baldosa', kind: 'supuesto', a: ['piso_calle', [404, 3890]], b: ['piso_calle', [786, 3890]] },
+  { name: 'Ancho de una baldosa', kind: 'prediccion', a: ['piso_calle', [404, 3890]], b: ['piso_calle', [786, 3890]] },
   { name: 'Ancho de la calle', kind: 'prediccion', a: ['piso_calle', [128, 2900]], b: ['piso_calle', [1065, 2900]] },
   { name: 'La Virgen, arrodillada', kind: 'prediccion', a: ['maria', [2143, 2576]], b: ['maria', [2143, 3770]] },
-  { name: 'Gabriel, arrodillado', kind: 'supuesto', a: ['gabriel', [620, 2530]], b: ['gabriel', [620, 3600]] },
+  { name: 'Gabriel, arrodillado', kind: 'supuesto', assumedHeight: 1.20, a: ['gabriel', [620, 2530]], b: ['gabriel', [620, 3600]] },
+  { name: 'Fraile, de pie', kind: 'supuesto', assumedHeight: 1.65, a: ['fraile', [425, 2255]], b: ['fraile', [420, 2655]] },
   { name: 'Hombre del manto dorado, de pie', kind: 'prediccion', a: ['hombre_dorado', [905, 2115]], b: ['hombre_dorado', [905, 2462]] },
   { name: 'Profundidad del cuarto de María', kind: 'prediccion', a: ['cuarto_piso', [2200, 3860]], b: ['cuarto_piso', [2200, 3262]] },
   { name: 'Alto del techo del cuarto', kind: 'prediccion', a: ['fachada_maria', [2200, 1740]], b: ['fachada_maria', [2200, 3890]] },
@@ -82,7 +83,7 @@ export class MeasureTool {
       this.pending = { point: hit.point.clone(), marker: this.marker(hit.point), label };
     } else {
       this.group.remove(this.pending.marker);
-      this.add(this.pending.point, hit.point, null);
+      this.add(this.pending.point, hit.point);
       this.pending = null;
     }
   }
@@ -103,10 +104,10 @@ export class MeasureTool {
 
   showPreset(preset) {
     if (this.items.some(({ name }) => name === preset.name)) return;
-    this.add(this.lift(...preset.a), this.lift(...preset.b), preset.name, preset.kind);
+    this.add(this.lift(...preset.a), this.lift(...preset.b), preset);
   }
 
-  add(a, b, name, kind) {
+  add(a, b, { name, kind, assumedHeight } = {}) {
     const objects = [this.marker(a), this.marker(b)];
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), this.lineMat);
     line.renderOrder = 10;
@@ -124,7 +125,7 @@ export class MeasureTool {
       div.appendChild(title);
     }
     const value = document.createElement('b');
-    value.textContent = fmt(d);
+    value.textContent = assumedHeight ? `Trazado: ${fmt(d)}` : fmt(d);
     div.appendChild(value);
     if (dy > 0.05 && Math.abs(dy - d) > 0.03) {
       const vertical = document.createElement('small');
@@ -134,7 +135,7 @@ export class MeasureTool {
     if (kind) {
       const metadata = document.createElement('small');
       metadata.className = 'measure-kind';
-      metadata.textContent = kind === 'supuesto' ? 'Supuesto' : 'Predicción';
+      metadata.textContent = kind === 'supuesto' ? `Supuesto (${fmt(assumedHeight)})` : 'Predicción';
       div.dataset.kind = kind;
       div.appendChild(metadata);
     }
