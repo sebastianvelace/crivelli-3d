@@ -27,10 +27,6 @@ export function createTour(viewer, measure, onUpdate) {
   let deadline = 0;
 
   const poseFor = (stop) => {
-    if (stop.pose === 'museum') {
-      const { position, target } = viewer.museum.startPose;
-      return { position, quaternion: lookQuaternion(position, target), painterness: 0, fov: 60 };
-    }
     if (stop.pose === 'eye') {
       return { position: viewer.space.eye, quaternion: new THREE.Quaternion(), painterness: 1, fov: 70 };
     }
@@ -84,8 +80,12 @@ export function createTour(viewer, measure, onUpdate) {
     const stage = STOPS[index];
     viewer.tourExterior = stage.exterior === true;
     viewer.setFillMode(stage.fill ?? viewer.fillMode);
-    const pose = poseFor(stage);
     update();
+    if (stage.pose === 'museum') {
+      viewer.enterMuseum(() => arrive(stage), { fromEntrance: true, duration: 0, mode: 'tour' });
+      return;
+    }
+    const pose = poseFor(stage);
     if (stage.travel) {
       viewer.animateTo({ ...pose, duration: stage.travel }, () => arrive(stage));
       viewer.animation.paused = paused;
@@ -119,9 +119,6 @@ export function createTour(viewer, measure, onUpdate) {
       viewer.animation = null;
       paused = false;
       measure.setEnabled(false);
-      viewer.windowOpen = false;
-      viewer.panelOpacity = 1;
-      viewer.setMode('tour');
       viewer.setFillMode('neutro');
       run(0);
     },

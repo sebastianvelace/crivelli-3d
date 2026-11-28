@@ -15,7 +15,6 @@ const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) 
 
 /**
  * Visor principal. Modos:
- *   'museum'-> en la sala, frente al cuadro colgado (punto de partida).
  *   'eye'   -> en el ojo de Crivelli; la escena coincide con la pintura.
  *   'walk'  -> primera persona (WASD + mouse con PointerLock).
  *   'orbit' -> órbita libre alrededor de la calle.
@@ -26,7 +25,7 @@ export class Viewer {
     this.container = container;
     this.calib = calibration;
     this.space = new PictureSpace(calibration);
-    this.mode = 'museum';
+    this.mode = 'walk';
     this.exteriorTransition = false;
     this.windowOpen = false; // ¿el cuadro ya se volvió ventana?
     this.listeners = new Set();
@@ -314,14 +313,14 @@ export class Viewer {
     this.onWindowOpened?.();
   }
 
-  /** Volver a la sala: el cuadro vuelve a ser un objeto colgado en la pared. */
-  enterMuseum(onDone, { fromEntrance = false, duration = 3, onProgress } = {}) {
-    this.stopTour?.();
+  /** Entra a la sala con el cuadro cerrado. */
+  enterMuseum(onDone, { fromEntrance = false, duration = 3, onProgress, mode = 'walk' } = {}) {
+    if (mode !== 'tour') this.stopTour?.();
     const { position, target } = this.museum.startPose;
     const quaternion = lookQuaternion(position, target);
     const arrive = () => {
       this.windowOpen = false;
-      this.setMode('museum');
+      this.setMode(mode);
       onDone?.();
     };
     if (fromEntrance) {
@@ -348,15 +347,13 @@ export class Viewer {
   }
 
   enterWalk() {
-    // Desde la sala se camina en el lugar (hasta la marca del ojo, por ejemplo).
-    if (this.mode === 'museum' || this.mode === 'walk') {
-      this.setMode('walk');
+    if (this.mode === 'walk') return;
+    const exterior = this.mode === 'orbit' || this.mode === 'model';
+    if (!this.windowOpen && !exterior) {
+      this.enterMuseum();
       return;
     }
-    if (!this.windowOpen) {
-      this.enterMuseum(() => this.setMode('walk'));
-      return;
-    }
+    this.windowOpen = true;
     const target = this.space.eye.clone().add(new THREE.Vector3(0, 0, -1.6));
     this.setMode('transition');
     this.animateTo(
@@ -487,7 +484,7 @@ export class Viewer {
   sampleMuseumPerformance() {
     if (this.museumPerformance) return;
     const inMuseum = this.portalActive && this.camera.painterness === 0 &&
-      (this.mode === 'museum' || this.mode === 'walk' || this.mode === 'tour');
+      (this.mode === 'walk' || this.mode === 'tour');
     if (!inMuseum || document.hidden) {
       this.museumSample = null;
       return;

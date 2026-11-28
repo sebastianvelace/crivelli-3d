@@ -90,7 +90,6 @@ function setupOverlays(viewer, calib) {
   touchInput.addEventListener('change', () => viewer.emit());
 
   const modeText = {
-    museum: ['En el museo', 'Elige «Ojo» para ver cómo se abre el cuadro.'],
     eye: ['En el ojo de Crivelli', 'Elige «Caminar» para cruzar el marco.'],
     walk: ['Caminando', 'Clic para mirar · WASD para caminar · rueda para acercar · Q/E para subir y bajar · Esc suelta el mouse'],
     orbit: ['Vista en órbita', 'Arrastra para girar · usa la rueda para acercarte'],
@@ -105,9 +104,12 @@ function setupOverlays(viewer, calib) {
     touchWalk.hidden = !touchWalking;
     const [title, defaultHint] = modeText[viewer.mode];
     hud.textContent = title;
-    hint.textContent = viewer.walkBlocked
-      ? 'Párate en la marca del suelo o elige «Ojo» para abrir el cuadro.'
-      : touchWalking ? 'Arrastra para mirar y usa las flechas para caminar.' : defaultHint;
+    const approachingPainting = viewer.mode === 'walk' && !viewer.windowOpen;
+    if (approachingPainting) {
+      hint.textContent = 'Camina hasta la placa del piso o pulsa «Ojo» para ver cómo se abre el cuadro.';
+    } else {
+      hint.textContent = touchWalking ? 'Arrastra para mirar y usa las flechas para caminar.' : defaultHint;
+    }
   });
   viewer.emit();
 
@@ -220,7 +222,6 @@ function setupControls(viewer, calib) {
   toolClose.addEventListener('click', () => showTool(null));
 
   const viewActions = {
-    museum: () => { if (viewer.mode !== 'museum') viewer.enterMuseum(); },
     eye: () => { if (viewer.mode !== 'eye') viewer.returnToEye(); },
     walk: () => { tour.stop(); viewer.enterWalk(); },
     model: () => { tour.stop(); if (viewer.mode !== 'model') viewer.enterModel(); },
@@ -401,7 +402,10 @@ function setupNavigation() {
       viewer.timer.reset();
       // Cámara y fundido comparten el mismo avance para mantenerlos sincronizados.
       const onProgress = fading ? (t) => { home.style.opacity = 1 - THREE.MathUtils.smoothstep(t, 0.02, 0.93); } : undefined;
-      const arrival = new Promise((resolve) => viewer.enterMuseum(resolve, { fromEntrance: true, duration: travel, onProgress }));
+      const guided = button.dataset.entry === 'tour';
+      const arrival = new Promise((resolve) => viewer.enterMuseum(resolve, {
+        fromEntrance: true, duration: travel, onProgress, mode: guided ? 'tour' : 'walk',
+      }));
       viewer.tick();
       viewer.timer.reset();
       viewer.renderer.setAnimationLoop(() => viewer.tick());
@@ -413,7 +417,7 @@ function setupNavigation() {
       experience.inert = false;
       viewer.keys.clear();
       pending = false;
-      if (button.dataset.entry === 'tour') {
+      if (guided) {
         tour.start();
         document.getElementById('tour-pause').focus({ preventScroll: true });
       } else {
