@@ -11,12 +11,9 @@ export const FILL_MODES = { fiel: 0, neutro: 1, inferido: 2 };
  * de la pintura. Es la "ventana" de Alberti al revés: en vez de pintar lo que se
  * ve por la ventana, "devolvemos" la pintura al espacio.
  *
- * Zonas ocultas: igual que un shadow map, comparamos la distancia del fragmento al
- * ojo con la del mapa de profundidad visto desde el ojo. Si algo lo tapaba en la
- * pintura, el pintor nunca vio ese trozo. Qué se muestra ahí depende del modo:
- *   fiel     -> nada (el fragmento se descarta: se ve el hueco de información)
- *   neutro   -> color yeso (salvo en los huecos chicos de las figuras: inpainting)
- *   inferido -> la textura plana horneada por analysis/infer.py (regla o inpainting)
+ * El mapa de asignación permite a una sola superficie tomar el color de cada
+ * píxel. Las regiones que carecen de pintura usan la textura horneada, salvo en
+ * el modo fiel, donde se conservan los huecos de información.
  */
 export function createProjectiveMaterial(shared, perElement) {
   return new THREE.ShaderMaterial({
@@ -42,7 +39,12 @@ export function createProjectiveMaterial(shared, perElement) {
       uniform sampler2D uDepth;
       uniform sampler2D uInferred;  // textura plana del elemento (vista + inferida)
       uniform vec3 uBackColor;      // reverso de los cartones en el modo inferido
-      uniform bool uInpaintInNeutral;  // permite reconstruir huecos pequeños en figuras
+      uniform sampler2D uOwnership;
+      uniform bool uHasOwnership;
+      uniform float uOwner;
+      uniform bool uHasInferred;
+      uniform bool uArchitecture;
+      uniform bool uInferredOnly;
       uniform float uNear;
       uniform float uFar;
       uniform float uMode;          // 0 fiel, 1 neutro, 2 inferido
@@ -69,15 +71,19 @@ export function createProjectiveMaterial(shared, perElement) {
         bool inFrame = vPainterClip.w > 0.0 && all(greaterThanEqual(uv, vec2(0.0))) && all(lessThanEqual(uv, vec2(1.0)));
 
         bool seen = false;
-        if (inFrame && uAtPainterEye) {
-          // El render actual ya resuelve la primera superficie del mismo rayo.
-          // Evita falsos ocultamientos por el muestreo discreto del mapa.
-          seen = true;
-        } else if (inFrame && gl_FrontFacing) {
-          // En perspectiva, w del clip = distancia del fragmento al ojo a lo largo de -Z.
-          float firstHit = linearDepth(texture2D(uDepth, uv).r);
-          seen = vPainterClip.w <= firstHit * 1.004 + 0.03;
+        if (inFrame && !uInferredOnly && (uAtPainterEye || gl_FrontFacing)) {
+          if (uHasOwnership) {
+            seen = uOwner > 0.0 && abs(texture2D(uOwnership, uv).r * 255.0 - uOwner) < 0.5;
+          } else if (uAtPainterEye) {
+            seen = true;
+          } else {
+            float firstHit = linearDepth(texture2D(uDepth, uv).r);
+            seen = vPainterClip.w <= firstHit * 1.004 + 0.03;
+          }
         }
+
+        // El soporte del cuadro cubre las zonas sin geometría al llegar al ojo.
+        if (uAtPainterEye && !seen) discard;
 
         // Fiel: lo que Crivelli no pintó simplemente no existe.
         if (!seen && uMode < 0.5) discard;
@@ -89,11 +95,12 @@ export function createProjectiveMaterial(shared, perElement) {
         vec3 color;
         if (seen) {
           color = texture2D(uPainting, uv).rgb;
-        } else if (uMode > 1.5 || (uInpaintInNeutral && gl_FrontFacing)) {
-          // En las figuras lo oculto son huecos chicos (un brazo que tapaba otra
-          // figura): ahí el inpainting reconstruye bien, así que se usa también en
-          // el modo neutro para no agujerear los cartones.
-          color = gl_FrontFacing ? texture2D(uInferred, vUv).rgb : uBackColor * light;
+        } else if (uHasInferred) {
+          color = (gl_FrontFacing || uArchitecture)
+            ? texture2D(uInferred, vUv).rgb * (gl_FrontFacing ? 1.0 : 0.78 + 0.22 * light)
+            : uBackColor * light;
+          // El relleno por color atenúa el detalle; el modo inferido lo conserva.
+          if (uMode < 1.5) color = mix(color, uBackColor, 0.16);
         } else {
           color = uNeutral * light * (gl_FrontFacing ? 1.0 : 0.78);
         }
@@ -120,6 +127,8 @@ export function createSharedUniforms(paintingTexture, depthTexture, near, far) {
   return {
     uPainting: { value: paintingTexture },
     uDepth: { value: depthTexture },
+    uOwnership: { value: null },
+    uHasOwnership: { value: false },
     uPainterViewProj: { value: new THREE.Matrix4() },
     uNear: { value: near },
     uFar: { value: far },

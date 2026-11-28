@@ -22,6 +22,7 @@ Salidas:
 Uso:  python analysis/geometry.py      (requiere numpy y Pillow)
 """
 
+import argparse
 import json
 import math
 from pathlib import Path
@@ -63,6 +64,40 @@ def intersect(l1, l2):
     """Intersección de dos rectas: p = l1 x l2 (también un producto cruz)."""
     p = np.cross(l1, l2)
     return p / p[2]
+
+
+def flat_homography(f, cx, cy, eye_height, height=0):
+    """Homografía de (X, D) a píxeles para un plano horizontal a altura fija."""
+    return np.array([[f, cx, 0.0], [0.0, cy, f * (eye_height - height)], [0.0, 1.0, 0.0]])
+
+
+def rectify_points(pixels, homography):
+    rays = np.column_stack((pixels, np.ones(len(pixels)))) @ np.linalg.inv(homography).T
+    return rays[:, :2] / rays[:, 2:3]
+
+
+def measure_loggia(data, calibration):
+    marks = data['loggiaDepthMarks']
+    segments = [line for line, zone in zip(data['orthogonals'], data['orthogonalZones']) if zone == 'logia']
+    vp, residuals, _ = vanishing_point(segments)
+    cx, cy = calibration['vanishingPoint']
+    f, height = calibration['focalPx'], calibration['eyeHeightM']
+    floor = flat_homography(f, cx, cy, height)
+    x_corner, front_depth = rectify_points([marks['cornerFoot']], floor)[0]
+    cornice_v = np.median(np.asarray(marks['frontCornice'])[:, 1])
+    ceiling_y = height + (cy - cornice_v) * front_depth / f
+    ceiling = flat_homography(f, cx, cy, height, ceiling_y)
+    front = rectify_points(marks['frontCornice'], ceiling)[:, 1]
+    back = rectify_points(marks['backCornice'], ceiling)[:, 1]
+    back_depth = float(np.median(back))
+    return {
+        'lines': len(segments), 'vanishingPoint': vp.tolist(),
+        'rmsPx': float(np.sqrt(np.mean(residuals ** 2))),
+        'distanceFromCalibrationPx': float(np.linalg.norm(vp - [cx, cy])),
+        'cornerX': float(x_corner), 'frontDepth': float(np.median(front)),
+        'ceilingY': float(ceiling_y), 'backDepth': back_depth,
+        'depth': back_depth - float(np.median(front)),
+    }
 
 
 def vanishing_point(segments):
@@ -207,7 +242,7 @@ def main():
     #        [u]   [f  cx    0  ] [X]
     #      w [v] = [0  cy  f*Hc ] [D]
     #        [1]   [0   1    0  ] [1]
-    H_analytic = np.array([[f, cx, 0.0], [0.0, cy, f * Hc], [0.0, 1.0, 0.0]])
+    H_analytic = flat_homography(f, cx, cy, Hc)
 
     # Comprobación independiente: DLT con las esquinas de baldosas medidas,
     # en unidades de baldosa. Tamaño de la baldosa en metros, a partir de la
@@ -429,4 +464,11 @@ def write_report(c):
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Análisis de la perspectiva de Crivelli.")
+    parser.add_argument('--logia', action='store_true', help='Mide la logia con la calibración vigente.')
+    if parser.parse_args().logia:
+        data = json.loads(LINES.read_text(encoding='utf-8'))
+        calibration = json.loads((ROOT / 'public/data/calibration.json').read_text(encoding='utf-8'))
+        print(json.dumps(measure_loggia(data, calibration), indent=2, ensure_ascii=False))
+    else:
+        main()

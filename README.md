@@ -30,7 +30,7 @@ npm run dev
 | *Caminar* | En escritorio, haz clic para mirar con el mouse. Usa `WASD` para moverte, `Shift` para correr y `Q`/`E` para bajar o subir la vista. Usa la rueda para acercar o alejar. Pulsa `Esc` para soltar el mouse. En una pantalla táctil, arrastra para mirar y usa las flechas para avanzar o retroceder. |
 | *Opciones → Perspectiva y geometría → Vista en órbita* | Girar, acercar y desplazar con el mouse |
 | *Maqueta* | Vista casi axonométrica de toda la reconstrucción |
-| *Opciones → Superficies ocultas* | Modo fiel, neutro (por defecto) o inferido |
+| *Opciones → Superficies ocultas* | Modo fiel, colores vecinos (por defecto) o inferido |
 | *Medir* | Selecciona dos puntos para obtener una distancia en metros. Al caminar, apunta con la mira y selecciona cada punto con un clic. También hay mediciones sugeridas. |
 | *Opciones → Perspectiva y geometría* | Superponer la pintura, marcar lo inferido, ver aristas medidas y supuestas, líneas de fuga y planta reconstruida. Haz clic en la planta para ampliarla. |
 | *Recorrido guiado* | 11 paradas en 73 s de reproducción. Usa **Pausar**, **Siguiente** o **Detener**. `Esc` también detiene el recorrido. |
@@ -71,23 +71,21 @@ Desde el ojo de Crivelli los modos son indistinguibles: todo lo que se ve es la 
 
 | Modo | Qué se ve donde no hay pintura |
 | --- | --- |
-| **Fiel al cuadro** | Nada: el fragmento se descarta y se ve el hueco de información. Además se dibujan las aristas de cada plano: blanco si su posición se **midió** en la pintura, ámbar discontinuo si es un **supuesto** (por ejemplo, la logia a 1,5 m de la fachada). |
-| **Neutro (yeso)** — por defecto | Un color neutro, sin textura inventada. |
-| **Inferido** | Una textura horneada offline por `analysis/infer.py` (inpainting en muros y fondos; el piso queda neutro). *Marcar lo inferido* la cubre con un rayado rosa. |
+| **Fiel al cuadro** | Se ven las superficies asignadas a la pintura y los huecos de información. Las aristas medidas son blancas y las supuestas o inferidas son ámbar discontinuo. |
+| **Colores vecinos** — por defecto | Completa las superficies ocultas con colores suavizados de las regiones adyacentes. |
+| **Inferido** | Conserva más contraste de las texturas que genera `analysis/infer.py`. *Marcar lo inferido* traza en rosa las zonas completadas en ambos modos de relleno. |
 
 Cada elemento de `scene.json` lleva:
-- `evidence`: `measured` o `assumed`, con una `note` que explica el supuesto.
+- `evidence`: `measured`, `assumed` o `inferred`, con una `note` que explica su procedencia.
 - `fill`: la regla para completar lo oculto en el modo inferido.
 
-El suavizado de los bordes en modo yeso queda para una revisión aparte. Esta entrega conserva el sombreado proyectivo de referencia.
+**Un intento descartado: la regla de las baldosas.** Se probó completar el piso oculto repitiendo una baldosa real rectificada con su ancho de 36 cm. El tono no coincide con el piso pintado y al caminar se veía el contorno de las figuras. El relleno vigente suaviza los colores de los bordes vecinos. El código de la prueba sigue en `infer.py` (`fill: "tiles"`).
 
-**Un intento descartado: la regla de las baldosas.** Se probó completar el piso oculto repitiendo una baldosa real rectificada, con su ancho derivado de la escala (36 cm), una de las 8 simetrías del cuadrado en cada celda y las juntas dibujadas por regla. La geometría era correcta, pero el tono de la baldosa repetida no coincide con el piso pintado, porque Crivelli sombrea el piso de manera continua. El resultado: al caminar se veía el contorno de cada figura dibujado en el piso. Una regla geométrica correcta no alcanza si la *apariencia* no sigue la misma regla, así que el piso volvió a quedar neutro. El código sigue en `infer.py` (`fill: "tiles"`) para documentar el experimento.
+Las superficies arquitectónicas propagan y suavizan el color visible más próximo. Lejos del borde, el relleno se funde con el color medio de la superficie. Los recortes de figuras conservan *Frequency Selective Reconstruction* (OpenCV xphoto) para completar oclusiones pequeñas.
 
-El modo inferido rellena el resto **por continuidad (inpainting)**: El resto se rellena con *Frequency Selective Reconstruction* (OpenCV xphoto), que reconstruye textura y no solo color, a partir de lo visto en el mismo plano. Lejos de los datos (más de ~0,5 m) el relleno se funde con el color medio del elemento: ahí cualquier detalle sería inventado.
+**Cómo se sabe qué vio el pintor.** `infer.py` genera `public/data/proyeccion.png`. Cada píxel tiene un único identificador, resuelto por oclusión anotada y profundidad. El visor y el horneado consultan el mismo mapa, de modo que el techo y el fondo dejan de tomar los colores de los pilares y las macetas que los tapan. El respaldo del cuadro, reservado para la vista desde el ojo, cubre el 2,8 % que queda fuera de las superficies asignadas.
 
-**Cómo se sabe qué vio el pintor.** `infer.py` calcula un z-buffer analítico en la imagen: cada elemento es un plano, así que la profundidad de cada píxel sale de cortar su rayo con el plano. Un texel de un elemento está «visto» si, proyectado a la pintura, no hay otro elemento más cerca del ojo. Es el mismo criterio que usa el shader en tiempo real.
-
-La lámina `docs/07_mascaras_de_evidencia.jpg` muestra, para cada elemento, qué fracción vio el pintor (por ejemplo, del piso de la calle solo el 25 %; de la fachada de María, el 96 %).
+La lámina `docs/07_mascaras_de_evidencia.jpg` muestra la fracción asignada a cada elemento. En la edición actual es del 28 % para el piso de la calle y del 99 % para la fachada de María.
 
 El borde lejano del muro derecho se recortó donde empieza el puente para dejar a la vista al hombre del manto dorado y la maceta. En el balcón izquierdo, las figuras se adelantaron 1,1 m respecto de su anclaje en la pared lateral. Ese desplazamiento es un supuesto para mantenerlas visibles.
 
@@ -99,7 +97,7 @@ El borde lejano del muro derecho se recortó donde empieza el puente para dejar 
 
 Los recortes de las figuras empezaron como polígonos trazados a mano (de 6 a 49 vértices), que arrastraban fondo: la franja del pilar detrás de Gabriel, el piso entre sus alas. Ahora cada polígono a mano es solo la región de interés (`roi`) con la que se inicializa **GrabCut** (OpenCV), que separa figura y fondo modelando sus colores y cortando un grafo. El contorno resultante, simplificado a 1,5 px, reemplaza al polígono (hasta 362 vértices en Gabriel). No necesita descargar ningún modelo. Lo que GrabCut no resuelva (por ejemplo, el niño arrastra un poco del muro blanco) se corrige con el editor del marcador. `docs/11_siluetas.jpg` muestra cada resultado junto a su ROI.
 
-**Versión final:** las diez siluetas se corrigieron a mano en el editor del marcador, partiendo del resultado de GrabCut (entre 49 y 879 vértices por figura). Quedan marcadas como `"silhouette": "manual"`, así que `segment.py` ya no las sobrescribe salvo que se le pida una figura por nombre.
+Las diez siluetas de base se corrigieron a mano en el editor del marcador, partiendo de GrabCut (entre 49 y 879 vértices por figura). Quedan marcadas como `"silhouette": "manual"`, así que `segment.py` solo las modifica si se le pide una figura por nombre.
 
 ```bash
 .venv/bin/python analysis/segment.py && .venv/bin/python analysis/infer.py
@@ -138,7 +136,7 @@ Las dos referencias humanas difieren en 3,2 cm y su media de **1,513 m** fija la
 
 El cuadro de la sala funciona como la ventana de Alberti calculada. El visor conserva un ancho de calibración de 146,5 cm, una distancia de 111 cm al ojo y un punto de fuga a 1,51 m de altura. Por eso el piso de la sala es el mismo plano que el piso de la calle pintada, y la base del cuadro queda a unos 56 cm del suelo. Al llegar al ojo se oculta la cédula y el cuadro se abre. La placa de latón y el anillo señalan el punto en el piso. La maqueta conserva la línea vertical auxiliar y la esfera para leer la altura del ojo respecto del suelo.
 
-Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. El mapa de profundidad de la pintura se calcula por separado. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. Entre el marco y el piso pintado hay un pequeño umbral de yeso marcado como `assumed`, visible desde la calle y excluido del mapa de profundidad. En órbita y maqueta se ocultan la sala y el portal.
+Un portal de stencil restringe el dibujo de la calle al interior del marco cuando se mira desde la sala. Al caminar, los límites amortiguan el movimiento hacia las paredes. El marco permite cruzar en ambos sentidos una vez abierto y el paso sobre los escalones del fondo eleva al visitante hasta la plataforma. El umbral entre el marco y el piso pintado y las continuaciones de la calle se ven desde el interior. En órbita y maqueta se ocultan la sala, el portal y las continuaciones.
 
 La sala se inspira en la [Sala 59 de la National Gallery](https://www.nationalgallery.org.uk/visiting/floorplans/level-2/room-59) y en las molduras de pietra serena del [ala Sainsbury](https://www.nationalgallery.org.uk/about-us/press-and-media/press-releases-archive/a-world-class-welcome-to-the-national-gallery-as-sainsbury-wing-reopens-after-two-years-of-closure). Tiene piso de roble, luz difusa desde el lucernario, un vano hacia una segunda sala y una banca con colisión. Las texturas se generan localmente. La cédula se dibuja a 2048 px y se reduce a 640 px antes de subirla a la GPU para respetar el presupuesto.
 
@@ -264,24 +262,34 @@ Por construcción, cada vértice visto desde el ojo cae sobre su píxel. **Por e
 
 Cada fragmento se proyecta con la matriz (proyección · vista) del pintor. Sus coordenadas NDC, llevadas a [0, 1], son la coordenada de textura dentro de la pintura: es la ventana de Alberti al revés.
 
-Desde la posición exacta del ojo el propio render resuelve qué superficie se ve primero, y todas las superficies de un mismo rayo muestrean el mismo píxel. Fuera del ojo, para las zonas que el pintor nunca vio usamos la misma técnica que un *shadow map*. Primero renderizamos la profundidad de la escena desde el ojo. Si un fragmento está más lejos que lo primero que el ojo ve en esa dirección, queda oculto en la pintura y se pinta de color «yeso» neutro (se marca en rosa con *Marcar lo inferido*, en *Opciones → Perspectiva y geometría*). Las caras traseras también son neutras: los cartones tienen el reverso liso.
+Desde cualquier punto de vista, el mapa de proyección determina qué superficie recibe cada píxel pintado. Las superficies ocultas se completan con los colores de su vecindad. Las caras traseras de los cartones usan el color medio de su recorte. La opción *Marcar lo inferido* señala estas zonas en rosa.
+
+### La logia y la columna de la esquina
+
+La profundidad de la logia **medida sobre la pintura es de 0,71 m**, condicionada a la escala del visor. Con la homografía del piso, el pie de la columna en (1556, 3890) px fija la arista de la fachada a 2,136 m del ojo. A partir de las marcas de la cornisa frontal, el techo se sitúa a 3,637 m sobre el piso. La homografía horizontal a esa altura rectifica los encuentros de los casetones con el fondo y sitúa ese muro a 2,845 m del ojo.
+
+El [marcador](http://localhost:5173/analysis/marcador.html) permite enfocar la logia y revisar las cinco ortogonales añadidas. El ajuste de las diez líneas de la zona da una fuga en (809,1; 2223,0) px, con un residuo RMS de 14,6 px. Queda a 63,8 px de la fuga global, por lo que los 0,71 m son una estimación en el modelo de un punto. La medición se reproduce con `python analysis/geometry.py --logia`.
+
+La columna tiene caras frontal y lateral. En la logia, los casetones y el muro del fondo tienen máscaras de lo visible y contornos físicos que se encuentran en 3D. Los pilares quedan en la fachada. Las macetas y la jaula tienen sus propios recortes y profundidades estimadas. Los laterales, la repisa y las continuaciones de la calle se identifican como inferidos. La escena conserva íntegros los 21 elementos ajenos a la corrección de los cuatro contornos editados.
+
+![Logia en Caminar, con los casetones y las plantas detrás de los pilares](docs/17_logia_reconstruida.png)
 
 ---
 
 ## Consistencia de la perspectiva
 
-Las 33 ortogonales originales calibran el visor. Se marcaron 11 segmentos adicionales en la mitad derecha, cinco en la logia y seis en el cuarto. Se ajustó con la misma SVD un punto de fuga global sobre las 44 marcas y uno por zona. Los errores se calculan respecto del punto ajustado de cada fila.
+Las 33 ortogonales originales calibran el visor. Hay 16 segmentos adicionales en la mitad derecha, diez en la logia y seis en el cuarto. El ajuste global ampliado usa las 49 marcas. Los errores se calculan respecto del punto ajustado de cada fila.
 
 | Zona | Rectas | Punto de fuga (px) | Error angular medio | Error máximo (px) |
 | --- | ---: | --- | ---: | ---: |
-| Global ampliado | 44 | (791,66; 2272,64) | 0,715° | 85,00 |
+| Global ampliado | 49 | (790,64; 2270,42) | 0,750° | 83,21 |
 | Calle izquierda | 9 | (801,15; 2311,56) | 0,071° | 4,59 |
 | Fachada de María | 20 | (778,03; 2307,87) | 0,242° | 12,07 |
-| Logia | 5 | (774,18; 2264,16) | 0,149° | 11,12 |
+| Logia | 10 | (809,15; 2223,03) | 0,234° | 30,57 |
 | Cuarto de María | 6 | (811,91; 2263,97) | 0,525° | 29,40 |
 | Piso | 4 | (793,98; 2121,02) | 0,657° | 36,23 |
 
-La calle izquierda y la fachada convergen localmente cerca de la misma altura en la imagen, entre 2308 y 2312 px. La logia y el cuarto convergen cerca de 2264 px, y las cuatro juntas del piso dan 2121 px, con más dispersión. El modelo de un punto es una aproximación útil. El piso y las zonas con pocas marcas requieren más cautela. Cada elipse de la figura muestra la sensibilidad al retirar una recta del ajuste de su zona.
+La calle izquierda y la fachada convergen localmente entre 2308 y 2312 px de altura en la imagen. La logia converge en 2223 px, el cuarto en 2264 px y las cuatro juntas del piso en 2121 px, con más dispersión. Cada elipse muestra la sensibilidad al retirar una recta del ajuste de su zona.
 
 Las cuatro diagonales dan una focal de **2266,45 ± 71,16 px** (media y desviación estándar muestral). Ese margen da **107,3–114,3 cm** de distancia de observación. La altura de **1,513 m** calculada a partir de las figuras queda fija al variar solo la focal, porque esta se cancela en la razón de alturas.
 
@@ -293,7 +301,7 @@ Las cuatro diagonales dan una focal de **2266,45 ± 71,16 px** (media y desviaci
 2. **Baldosas cuadradas** para calcular la distancia del ojo.
 3. **Alturas de las figuras:** el fraile del fondo mide 1,65 m (con gorro) y Gabriel arrodillado, 1,20 m. Fijan la escala.
 4. **Escalones:** se modelan como un solo plano frontal (la contrahuella) más una plataforma horizontal. La altura que resulta, ≈ 0,6 m para tres escalones, es razonable.
-5. **Pared del fondo de la logia:** se supone 1,5 m detrás de la fachada. La pintura no da otra pista. El techo de casetones se ancla a esa pared, y la logia resulta de unos 2 m de alto.
+5. **Pared del fondo de la logia:** se estima a 0,71 m detrás de la fachada mediante la homografía del techo. Los laterales, la repisa y la separación de los objetos se infieren de su apoyo y oclusión en la pintura.
 6. **Cuarto de María:** el techo se ancla en el borde superior de la puerta (sobre la fachada) y la pared del fondo, en la línea donde termina el techo. El cuarto resulta de ≈ 1,4 m de fondo y ≈ 2 m de alto.
 7. **Paredes laterales:** la pintura no es perfectamente coherente. El muro derecho no sigue exactamente una sola recta hacia el punto de fuga a lo largo de toda la calle, así que tomamos la base cercana, la más nítida. Por eso al caminar aparecen algunas juntas.
 8. **Lo que no se modela:** las cornisas y los relieves conservan su representación plana, y la torre lejana va pintada sobre el fondo del cielo. Las figuras son cartones frontales recortados con polígonos trazados a mano.

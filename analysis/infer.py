@@ -3,14 +3,13 @@ Modo inferido: hornea, para cada elemento de la escena, una textura plana que
 completa lo que Crivelli NO pintó (lo tapado por otros elementos o fuera del cuadro).
 
 Pasos:
-  1. Mapa de profundidad en la imagen: para cada píxel de la pintura, la menor
-     profundidad entre todos los elementos que lo cubren (un z-buffer, pero
-     calculado analíticamente: cada elemento es un plano).
+  1. Asigna cada píxel pintado a una sola superficie. Las oclusiones explícitas
+     preceden al orden por profundidad de los planos.
   2. Para cada elemento, una textura en las coordenadas de SU plano. Cada texel se
      lleva a 3D, se proyecta a la pintura y se marca como "visto" si ningún otro
      elemento lo tapaba desde el ojo.
   3. Lo no visto se rellena con una regla, si la hay, o con inpainting:
-       - 'neutral': color yeso, sin inventar nada (el piso de la calle).
+       - 'neighbor': color suavizado del texel visible más cercano.
        - 'tiles':   repetir la baldosa real rectificada con su tamaño medido.
                     Se probó en el piso y se descartó: el tono de la baldosa
                     repetida no coincide con el piso pintado y se ve el borde.
@@ -20,6 +19,7 @@ Pasos:
 Salidas:
   public/textures/<id>.jpg     textura plana completa (vista + inferida)
   public/data/textures.json    límites de cada textura en el plano y estadísticas
+  public/data/proyeccion.png   identificador de la única superficie por píxel
   docs/07_mascaras_de_evidencia.jpg  qué fracción de cada elemento vio el pintor
 
 Uso:  python analysis/infer.py   (requiere numpy, Pillow y opencv-contrib-python-headless)
@@ -38,7 +38,7 @@ from scene3d import PictureSpace, from_local, lift, resolve_planes, to_local
 ROOT = Path(__file__).resolve().parent.parent
 PPM = 220            # texels por metro en las texturas planas
 MAX_SIDE = 2048      # tamaño máximo de una textura
-WORK_W = 1500        # ancho del mapa de profundidad (la pintura mide 2996 px)
+WORK_W = 2048         # ancho del mapa de asignación de píxeles
 
 
 def polygon_mask(shape, polygon, holes, transform):
@@ -62,20 +62,36 @@ def bilinear(img, u, v):
             + img[v0 + 1, u0] * (1 - du) * dv + img[v0 + 1, u0 + 1] * du * dv)
 
 
-def depth_buffer(space, elements, planes):
-    """Menor profundidad D por píxel (a resolución reducida) entre todos los elementos."""
+def projection_owners(space, elements, planes):
+    """Asigna un único identificador por píxel. El 255 se reserva al respaldo."""
     k = WORK_W / space.W
     h, w = round(space.H * k), WORK_W
     us = (np.arange(w) + 0.5) / k
     vs = (np.arange(h) + 0.5) / k
-    U, V = np.meshgrid(us, vs)
-    zbuf = np.full((h, w), np.inf)
-    for el in elements:
-        m = polygon_mask((h, w), el["polygon"], el.get("holes", []), lambda p: (p[0] * k, p[1] * k))
-        t = space.ray_t(U[m], V[m], planes[el["id"]])
-        t = np.where(t > 0, t, np.inf)
-        zbuf[m] = np.minimum(zbuf[m], t)
-    return zbuf, k
+    depth = np.full((h, w), np.inf, dtype=np.float32)
+    priority = np.full((h, w), -1, dtype=np.int16)
+    owners = np.zeros((h, w), dtype=np.uint8)
+    transform = lambda p: (p[0] * k - .5, p[1] * k - .5)
+    if len(elements) > 254:
+        raise ValueError('El mapa de proyección admite hasta 254 superficies reconstruidas.')
+    for owner, el in enumerate(elements, 1):
+        if el.get('evidence') == 'inferred':
+            continue
+        mask = polygon_mask((h, w), el['polygon'], el.get('holes', []), transform).copy()
+        for part in el.get('projectionParts', []):
+            mask |= polygon_mask((h, w), part['polygon'], part.get('holes', []), transform)
+        rows, cols = np.nonzero(mask)
+        distance = space.ray_t(us[cols], vs[rows], planes[el['id']])
+        level = el.get('projectionPriority', 0)
+        old = priority[rows, cols]
+        closer = distance < depth[rows, cols] - 1e-5
+        first = (distance > 0) & np.isfinite(distance) & ((level > old) | ((level == old) & closer))
+        rows, cols = rows[first], cols[first]
+        depth[rows, cols] = distance[first]
+        priority[rows, cols] = level
+        owners[rows, cols] = owner
+    owners[owners == 0] = 255
+    return owners, k
 
 
 def tile_sampler(space, calib, painting):
@@ -149,15 +165,43 @@ def inpaint(color, known, max_side=360, fade_px=40):
     return filled[~known]
 
 
-def bake_element(space, el, plane, painting, zbuf, k, tiles):
+def neighbor_fill(color, known):
+    """Propaga el color local y suaviza sus bordes sin cambiar los texeles vistos."""
+    distance, labels = cv2.distanceTransformWithLabels((~known).astype(np.uint8), cv2.DIST_L2, 5,
+                                                       labelType=cv2.DIST_LABEL_PIXEL)
+    values = np.zeros((int(labels.max()) + 1, 3), dtype=np.float32)
+    values[labels[known]] = color[known]
+    local = cv2.GaussianBlur(values[labels], (0, 0), 4)[~known]
+    coarse = cv2.GaussianBlur(values[labels], (0, 0), 16)[~known]
+    weight = np.exp(-distance[~known, None] / 14)
+    average = np.median(color[known], axis=0)
+    return local * weight + (coarse * .28 + average * .72) * (1 - weight)
+
+
+def vertical_fill(color, known):
+    """Continúa las jambas y listones verticales al pasar detrás de un recorte."""
+    filled = color.copy()
+    filled[~known] = neighbor_fill(color, known)
+    for col in range(color.shape[1]):
+        rows = np.flatnonzero(known[:, col])
+        missing = np.flatnonzero(~known[:, col])
+        if len(rows) < 3 or not len(missing):
+            continue
+        for channel in range(3):
+            filled[missing, col, channel] = np.interp(missing, rows, color[rows, col, channel])
+    return filled[~known]
+
+
+def bake_element(space, el, plane, painting, owners, k, owner, tiles, palettes):
     kind = plane["type"]
-    P3 = lift(space, el["polygon"], plane)
+    P3 = lift(space, el.get('modelPolygon', el['polygon']), plane)
     loc = to_local(kind, P3)
-    holes = [to_local(kind, lift(space, h, plane)) for h in el.get("holes", [])]
+    holes = [] if 'modelPolygon' in el else [to_local(kind, lift(space, h, plane)) for h in el.get('holes', [])]
     amin, bmin = loc.min(axis=0)
     amax, bmax = loc.max(axis=0)
-    w = int(np.clip((amax - amin) * PPM, 32, MAX_SIDE))
-    h = int(np.clip((bmax - bmin) * PPM, 32, MAX_SIDE))
+    limit = 384 if el.get('evidence') == 'inferred' else MAX_SIDE
+    w = int(np.clip((amax - amin) * PPM, 32, limit))
+    h = int(np.clip((bmax - bmin) * PPM, 32, limit))
 
     # Centros de texel -> coordenadas del plano. La fila 0 corresponde a b = bmax
     # (igual que una textura de three.js con flipY: uv.y = 1 arriba).
@@ -171,37 +215,50 @@ def bake_element(space, el, plane, painting, zbuf, k, tiles):
     inside = polygon_mask((h, w), loc, holes, to_tex)
 
     in_img = (D > 0) & (u >= 0) & (u < space.W) & (v >= 0) & (v < space.H)
-    ui = np.clip((u * k).astype(int), 0, zbuf.shape[1] - 1)
-    vi = np.clip((v * k).astype(int), 0, zbuf.shape[0] - 1)
-    first_hit = zbuf[vi, ui]
-    seen = in_img & (D <= first_hit * 1.004 + 0.03)
+    ui = np.clip((u * k).astype(int), 0, owners.shape[1] - 1)
+    vi = np.clip((v * k).astype(int), 0, owners.shape[0] - 1)
+    known = inside & in_img & (owners[vi, ui] == owner)
 
     color = np.zeros((h, w, 3), np.float32)
-    color[seen] = bilinear(painting, u[seen], v[seen])
+    color[known] = bilinear(painting, u[known], v[known])
 
-    known = seen & inside
     frac = float(known.sum() / max(inside.sum(), 1))
     method = el.get("fill", "inpaint")
-    if method == "neutral":
-        color[~seen] = (201, 187, 162)  # mismo color yeso que el modo neutro
-    elif method == "tiles":
+    if method == "tiles":
         X = P[..., 0]
         fill = tiles(X, D)
-        color[~seen] = fill[~seen]
-    elif known.sum() > 50:
+        color[~known] = fill[~known]
+    elif known.sum() > 50 and method == 'inpaint' and el['kind'] == 'figure':
         color[~known] = inpaint(color, known)
-        method = "inpaint"
+    elif known.any() and method == 'vertical':
+        color[~known] = vertical_fill(color, known)
+    elif known.any():
+        color[~known] = neighbor_fill(color, known)
+        method = 'neighbor'
+    elif el.get('fillFrom') in palettes:
+        palette, bounds, donor_type = palettes[el['fillFrom']]
+        if donor_type == kind:
+            a0, b0, a1, b1 = bounds
+            map_a = ((A - a0) * (palette.shape[1] - 1) / (a1 - a0)).astype(np.float32)
+            map_b = ((b1 - B) * (palette.shape[0] - 1) / (b1 - b0)).astype(np.float32)
+            adjacent = cv2.remap(palette, map_a, map_b, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REPLICATE)
+        else:
+            adjacent = cv2.resize(palette, (w, h))
+        color[:] = palette.mean(axis=(0, 1)) * .46 + adjacent * .54
+        method = 'neighbor'
     else:
-        color[:] = (201, 187, 162)  # sin datos: color neutro
-        method = "none"
+        color[:] = np.mean(painting[405:530, 470:715], axis=(0, 1))
+        method = 'neighbor'
 
-    back = color[known].mean(axis=0) if known.any() else np.array([120, 110, 95])
+    back = color[known].mean(axis=0) if known.any() else color.mean(axis=(0, 1))
     return color, known, inside, {
         "bounds": [float(amin), float(bmin), float(amax), float(bmax)],
         "size": [w, h],
         "seenFraction": round(frac, 3),
         "method": method,
-        "backColor": "#%02x%02x%02x" % tuple(int(x) for x in back * 0.55),
+        "owner": owner,
+        "meanColor": "#%02x%02x%02x" % tuple(int(x) for x in back.clip(0, 255)),
+        "backColor": "#%02x%02x%02x" % tuple(int(x) for x in back * .83),
     }
 
 
@@ -213,15 +270,18 @@ def main():
     space = PictureSpace(calib)
     elements = scene["elements"]
     planes = resolve_planes(space, elements)
-    zbuf, k = depth_buffer(space, elements, planes)
+    owners, k = projection_owners(space, elements, planes)
     tiles = tile_sampler(space, calib, painting)
 
     out_dir = ROOT / "public/textures"
     out_dir.mkdir(parents=True, exist_ok=True)
-    meta, thumbs = {}, []
-    for el in elements:
+    meta, thumbs, palettes = {}, [], {}
+    for owner, el in enumerate(elements, 1):
         t0 = time.time()
-        color, known, inside, info = bake_element(space, el, planes[el["id"]], painting, zbuf, k, tiles)
+        color, known, inside, info = bake_element(space, el, planes[el["id"]], painting,
+                                                  owners, k, owner, tiles, palettes)
+        palettes[el['id']] = (cv2.resize(color, (32, 32), interpolation=cv2.INTER_AREA),
+                              info['bounds'], planes[el['id']]['type'])
         img = Image.fromarray(color.clip(0, 255).astype(np.uint8))
         img.save(out_dir / f"{el['id']}.jpg", quality=86)
         info["file"] = f"textures/{el['id']}.jpg"
@@ -231,6 +291,7 @@ def main():
               f"{info['method']:8s} {time.time() - t0:5.1f}s")
 
     (ROOT / "public/data/textures.json").write_text(json.dumps(meta, indent=1, ensure_ascii=False), encoding="utf-8")
+    Image.fromarray(owners).save(ROOT / 'public/data/proyeccion.png', optimize=True)
     evidence_sheet(thumbs)
 
 
@@ -249,7 +310,7 @@ def evidence_sheet(thumbs):
         im.thumbnail((cell - 10, cell - 10))
         x, y = (i % cols) * cell, (i // cols) * (cell + 30)
         sheet.paste(im, (x + (cell - im.width) // 2, y + 5))
-        tag = "supuesto" if el.get("evidence") == "assumed" else "medido"
+        tag = {'assumed': 'supuesto', 'inferred': 'inferido', 'measured': 'medido'}[el['evidence']]
         dr.text((x + 6, y + cell + 2), f"{el['id']} · {info['seenFraction'] * 100:.0f}% visto · {tag}", fill=(20, 20, 20))
     sheet.save(ROOT / "docs/07_mascaras_de_evidencia.jpg", quality=88)
 

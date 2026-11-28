@@ -64,11 +64,13 @@ export class Viewer {
     // Mapa de profundidad visto desde el ojo (para detectar zonas ocultas)
     const rtW = 1400;
     const rtH = Math.round((rtW * this.space.H) / this.space.W);
-    this.depthTarget = new THREE.WebGLRenderTarget(rtW, rtH, {
+    this.depthTarget = inferred?.ownership ? null : new THREE.WebGLRenderTarget(rtW, rtH, {
       depthTexture: new THREE.DepthTexture(rtW, rtH, THREE.UnsignedIntType),
     });
 
-    this.uniforms = createSharedUniforms(paintingTexture, this.depthTarget.depthTexture, PAINTER_NEAR, PAINTER_FAR);
+    this.uniforms = createSharedUniforms(paintingTexture, this.depthTarget?.depthTexture, PAINTER_NEAR, PAINTER_FAR);
+    this.uniforms.uOwnership.value = inferred?.ownership ?? null;
+    this.uniforms.uHasOwnership.value = !!inferred?.ownership;
     this.uniforms.uPainterViewProj.value.multiplyMatrices(
       this.painterCamera.projectionMatrix,
       this.painterCamera.matrixWorldInverse,
@@ -78,9 +80,18 @@ export class Viewer {
     this.buildHelpers(paintingTexture);
     this.museum = createMuseum(this.space, calibration, paintingTexture, galleryImage);
     this.scene.add(this.museum.group);
+    this.eyeBacking = new THREE.Mesh(this.museum.panel.geometry, new THREE.MeshBasicMaterial({
+      map: paintingTexture, toneMapped: false, depthWrite: false, depthTest: false,
+    }));
+    this.eyeBacking.position.copy(this.museum.panel.position);
+    this.eyeBacking.name = 'respaldo_cuadro';
+    this.eyeBacking.renderOrder = -2;
+    this.eyeBacking.layers.set(HELPER_LAYER);
+    this.eyeBacking.visible = false;
+    this.scene.add(this.eyeBacking);
     this.buildThreshold();
     this.panelOpacity = 1;
-    this.renderDepth();
+    if (this.depthTarget) this.renderDepth();
     this.renderer.shadowMap.needsUpdate = true;
 
     // Controles
@@ -158,6 +169,7 @@ export class Viewer {
     this.planes = resolvePlanes(this.space, sceneData.elements);
     this.pictureGroup = new THREE.Group();
     this.elementMeshes = new Map();
+    this.streetFills = [];
     // Aristas de evidencia (capa de ayudas, fuera de la proyección):
     // blanco = plano medido en la pintura, ámbar discontinuo = plano supuesto.
     this.evidenceEdges = new THREE.Group();
@@ -171,7 +183,10 @@ export class Viewer {
       const material = createProjectiveMaterial(this.uniforms, {
         uInferred: { value: inferred?.textures.get(el.id) ?? null },
         uBackColor: { value: new THREE.Color(info?.backColor ?? '#6e6456') },
-        uInpaintInNeutral: { value: el.kind === 'figure' && !el.plasterInNeutral && !!inferred?.textures.has(el.id) },
+        uHasInferred: { value: !!inferred?.textures.has(el.id) },
+        uArchitecture: { value: el.kind !== 'figure' },
+        uOwner: { value: info?.owner ?? 0 },
+        uInferredOnly: { value: el.evidence === 'inferred' },
       });
       material.toneMapped = false;
       const mesh = new THREE.Mesh(geometry, material);
@@ -179,8 +194,10 @@ export class Viewer {
       mesh.userData = { label: el.label, kind: el.kind, evidence: el.evidence, seenFraction: info?.seenFraction };
       this.pictureGroup.add(mesh);
       this.elementMeshes.set(el.id, mesh);
+      if (el.walkOnly) this.streetFills.push(mesh);
 
-      const assumed = el.evidence === 'assumed';
+      if (el.walkOnly) continue;
+      const assumed = el.evidence !== 'measured';
       const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geometry, 1), assumed ? edgeAssumed : edgeMeasured);
       if (assumed) edges.computeLineDistances();
       edges.layers.set(HELPER_LAYER);
@@ -203,6 +220,48 @@ export class Viewer {
     ground.layers.set(HELPER_LAYER);
     this.scene.add(ground);
     this.ground = ground;
+    this.streetSky = this.buildStreetSky(inferred?.meta.fondo_cielo?.meanColor);
+  }
+
+  buildStreetSky(color = '#81969a') {
+    const sky = new THREE.Mesh(new THREE.SphereGeometry(125, 32, 12), new THREE.ShaderMaterial({
+      side: THREE.BackSide,
+      depthWrite: false,
+      depthTest: false,
+      uniforms: { uSky: { value: new THREE.Color(color) }, uMarkInferred: this.uniforms.uMarkInferred },
+      vertexShader: /* glsl */ `
+        varying vec3 vDirection;
+        void main() {
+          vDirection = position - cameraPosition;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform vec3 uSky;
+        uniform float uMarkInferred;
+        varying vec3 vDirection;
+        void main() {
+          float elevation = normalize(vDirection).y;
+          vec3 horizon = mix(uSky, vec3(0.68, 0.57, 0.41), 0.55);
+          vec3 ground = mix(uSky, vec3(0.31, 0.22, 0.13), 0.69);
+          vec3 zenith = mix(uSky, vec3(0.22, 0.37, 0.51), 0.64);
+          vec3 color = mix(horizon, ground, smoothstep(0.0, 0.72, -elevation));
+          color = mix(color, zenith, smoothstep(0.0, 0.75, elevation));
+          if (uMarkInferred > 0.5) {
+            float stripe = step(0.5, fract((gl_FragCoord.x + gl_FragCoord.y) / 14.0));
+            color = mix(color, vec3(0.92, 0.36, 0.62), 0.28 + 0.22 * stripe);
+          }
+          gl_FragColor = vec4(color, 1.0);
+          #include <colorspace_fragment>
+        }
+      `,
+      toneMapped: false,
+    }));
+    sky.renderOrder = -2;
+    sky.layers.set(HELPER_LAYER);
+    sky.visible = false;
+    this.scene.add(sky);
+    return sky;
   }
 
   buildThreshold() {
@@ -477,6 +536,7 @@ export class Viewer {
     // Las aristas de evidencia se desvanecen al llegar al ojo: ahí manda la pintura.
     const k = this.eyeFactor();
     this.uniforms.uAtPainterEye.value = k > 1 - 1e-6;
+    this.eyeBacking.visible = k > 0.995;
     this.museum.plaque.material.opacity = 1 - THREE.MathUtils.smoothstep(k, 0.85, 0.95);
     this.museum.plaque.visible = k < 0.95;
     for (const [m, base] of this.edgeMaterials) m.opacity = base * (1 - k);
@@ -515,10 +575,13 @@ export class Viewer {
     const outsideRoom = onMuseumSide && (x < ROOM.x0 || x > ROOM.x1 || y < 0 || y > SKYLIGHT_HEIGHT || z > ROOM.z1);
     const exterior = this.mode === 'orbit' || this.mode === 'model' ||
       (this.mode === 'transition' && this.exteriorTransition) || (this.mode === 'tour' && this.tourExterior);
+    const inStreet = !onMuseumSide && !exterior;
+    for (const mesh of this.streetFills) mesh.visible = inStreet;
+    this.streetSky.visible = inStreet && this.fillMode !== 'fiel';
     this.museum.group.visible = !outsideRoom && !exterior;
     const usePortal = onMuseumSide && this.museum.group.visible;
     this.museum.portal.visible = usePortal;
-    this.ground.visible = !usePortal;
+    this.ground.visible = !usePortal && !this.streetSky.visible;
     this.threshold.visible = !onMuseumSide && this.museum.group.visible;
     if (this.portalActive === usePortal) return;
     this.portalActive = usePortal;

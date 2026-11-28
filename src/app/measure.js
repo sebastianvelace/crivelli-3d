@@ -76,7 +76,7 @@ export class MeasureTool {
       const portalHit = this.raycaster.ray.at((z - origin.z) / direction.z, new THREE.Vector3());
       if (portalHit.x < x0 || portalHit.x > x1 || portalHit.y < y0 || portalHit.y > y1) return;
     }
-    const hit = this.raycaster.intersectObjects(v.pictureGroup.children, false)[0];
+    const hit = this.raycaster.intersectObjects(v.pictureGroup.children.filter((mesh) => mesh.visible), false)[0];
     if (!hit) return;
     const label = v.elementMeshes.get(hit.object.name)?.userData.label ?? hit.object.name;
     if (!this.pending) {

@@ -122,8 +122,8 @@ export function buildElementGeometry(space, el, plane, uvBounds = null) {
       return p;
     });
 
-  const contour3 = lift(el.polygon);
-  const holes3 = (el.holes ?? []).map(lift);
+  const contour3 = lift(el.modelPolygon ?? el.polygon);
+  const holes3 = el.modelPolygon ? [] : (el.holes ?? []).map(lift);
   const contour2 = contour3.map((p) => to2D(plane.type, p));
   const holes2 = holes3.map((h) => h.map((p) => to2D(plane.type, p)));
   const faces = THREE.ShapeUtils.triangulateShape(contour2, holes2);

@@ -54,15 +54,21 @@ async function prepareViewer(progress) {
 async function loadInferred(loader, meta) {
   if (!meta) return null;
   try {
-    const entries = await Promise.all(
-      Object.entries(meta).map(async ([id, info]) => {
+    const [entries, ownership] = await Promise.all([
+      Promise.all(Object.entries(meta).map(async ([id, info]) => {
         const tex = await loader.loadAsync(BASE + info.file);
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = 4;
         return [id, tex];
-      }),
-    );
-    return { meta, textures: new Map(entries) };
+      })),
+      Object.values(meta).some((info) => info.owner)
+        ? loader.loadAsync(BASE + 'data/proyeccion.png') : null,
+    ]);
+    if (ownership) {
+      ownership.minFilter = ownership.magFilter = THREE.NearestFilter;
+      ownership.generateMipmaps = false;
+    }
+    return { meta, textures: new Map(entries), ownership };
   } catch (err) {
     console.warn('Sin texturas inferidas:', err.message);
     return null;
@@ -320,7 +326,7 @@ function setupControls(viewer, calib) {
   const legend = document.getElementById('legend');
   const descriptions = {
     fiel: 'Deja vacías las superficies que Crivelli no pintó. Las aristas blancas son medidas y las doradas, supuestas.',
-    neutro: 'Representa en color yeso las superficies ocultas.',
+    neutro: 'Rellena las superficies ocultas con colores de las regiones vecinas.',
     inferido: 'Completa las superficies ocultas con textura tomada de las zonas visibles.',
   };
   viewer.onChange(() => {

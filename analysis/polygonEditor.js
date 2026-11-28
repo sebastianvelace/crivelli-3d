@@ -22,7 +22,8 @@ export function createPolygonEditor({ ctx, toScreen, onChange }) {
   const element = () => scene?.elements.find((e) => e.id === selected);
 
   /** Anillos editables del elemento: el contorno y sus huecos. */
-  const rings = (el) => [el.polygon, ...(el.holes ?? [])];
+  const rings = (el) => [el.polygon, ...(el.holes ?? []),
+    ...(el.projectionParts ?? []).flatMap((part) => [part.polygon, ...(part.holes ?? [])])];
 
   function nearestVertex(p, scale) {
     const el = element();
@@ -143,6 +144,13 @@ export function createPolygonEditor({ ctx, toScreen, onChange }) {
       }
       const el = element();
       if (!el) return;
+      if (el.modelPolygon) {
+        ctx.strokeStyle = '#ffe05b';
+        ctx.setLineDash([6, 4]);
+        path(el.modelPolygon);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       if (el.roi) {
         ctx.setLineDash([6, 4]);
         ctx.strokeStyle = 'rgba(255,210,0,0.8)';
@@ -172,7 +180,8 @@ export function createPolygonEditor({ ctx, toScreen, onChange }) {
       const el = element();
       if (!el) return '';
       const n = rings(el).reduce((a, r) => a + r.length, 0);
-      return `${el.label}<br>${n} vértices · silueta: ${el.silhouette ?? 'manual'} · evidencia: ${el.evidence}`;
+      const evidence = { measured: 'medida', assumed: 'supuesta', inferred: 'inferida' };
+      return `${el.label}<br>${n} vértices · silueta: ${el.silhouette ?? 'manual'} · evidencia: ${evidence[el.evidence] ?? el.evidence}`;
     },
   };
 }

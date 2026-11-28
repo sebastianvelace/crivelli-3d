@@ -18,6 +18,7 @@ const stats = document.getElementById('stats');
 const jsonBox = document.getElementById('json');
 const modeSel = document.getElementById('mode');
 const zoneSel = document.getElementById('zone');
+const zoneOnly = document.getElementById('zone-only');
 const elementSel = document.getElementById('element');
 const BASE = import.meta.env.DEV ? '/' : '../';
 
@@ -97,7 +98,10 @@ function draw() {
     stats.innerHTML = editor.stats();
     return;
   }
-  const vp = vanishingPoint(data.orthogonals);
+  const orthogonals = zoneOnly.checked && zoneSel.value
+    ? data.orthogonals.filter((_, i) => data.orthogonalZones?.[i] === zoneSel.value)
+    : data.orthogonals;
+  const vp = vanishingPoint(orthogonals);
   const seg = (s, color, w) => {
     const [a, b] = toScreen(s[0], s[1]);
     const [c, d] = toScreen(s[2], s[3]);
@@ -108,11 +112,11 @@ function draw() {
     ctx.lineTo(c, d);
     ctx.stroke();
   };
-  for (const s of data.orthogonals) {
+  for (const s of orthogonals) {
     if (vp) seg([s[0], s[1], vp.p[0], vp.p[1]], 'rgba(255,60,60,0.5)', 1);
     seg(s, '#2ee65a', 3);
   }
-  for (const s of data.diagonals) seg(s, '#3c82ff', 3);
+  if (!zoneOnly.checked) for (const s of data.diagonals) seg(s, '#3c82ff', 3);
   if (vp) {
     const [x, y] = toScreen(...vp.p);
     ctx.strokeStyle = '#ffd400';
@@ -131,7 +135,7 @@ function draw() {
     ctx.fillRect(x - 4, y - 4, 8, 8);
   }
   stats.innerHTML =
-    `Ortogonales: ${data.orthogonals.length} · Diagonales: ${data.diagonals.length}<br>` +
+    `Ortogonales visibles: ${orthogonals.length} de ${data.orthogonals.length} · Diagonales: ${data.diagonals.length}<br>` +
     (vp ? `Punto de fuga: (${vp.p[0].toFixed(1)}, ${vp.p[1].toFixed(1)}) px<br>Error RMS: ${vp.rms.toFixed(2)} px` : 'Marca al menos 2 ortogonales');
   jsonBox.value = JSON.stringify(data, null, 1);
 }
@@ -210,6 +214,17 @@ window.addEventListener('resize', draw);
 
 document.getElementById('load').onclick = async () => {
   data = await (await fetch(linesUrl)).json();
+  draw();
+};
+zoneSel.addEventListener('change', draw);
+zoneOnly.addEventListener('change', draw);
+document.getElementById('focus-loggia').onclick = () => {
+  kindSel.value = 'orthogonals';
+  zoneSel.value = 'logia';
+  zoneOnly.checked = true;
+  pending = null;
+  const scale = Math.min(wrap.clientWidth / 1800, wrap.clientHeight / 980);
+  view = { scale, x: (wrap.clientWidth - 1800 * scale) / 2 - 1220 * scale, y: 24 };
   draw();
 };
 document.getElementById('clear').onclick = () => {
